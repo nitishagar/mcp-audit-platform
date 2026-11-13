@@ -79,14 +79,14 @@ exit=1</code></pre>
     <section id="faq" class="feature">
       <h2>FAQ</h2>
       <dl>
-        <dt>Is this a penetration test?</dt>
-        <dd>No. mcp-audit performs static analysis of your MCP configuration — not a penetration test. It never probes live systems or runs attacks. For adversarial testing, pair it with a pentest firm; our report makes their scoping call shorter.</dd>
+        <dt>Do you test live systems?</dt>
+        <dd>No. mcp-audit performs static analysis of your MCP configuration — not a penetration test. It never probes live systems or runs attacks. For adversarial testing, pair it with a red-team firm; our report makes their scoping call shorter.</dd>
         <dt>Which framework do findings map to?</dt>
         <dd>OWASP MCP Top 10 v2025-beta, with CVE references where research ties one. Unmapped patterns default to medium and are flagged, never silent.</dd>
         <dt>Do my configs leave my machine?</dt>
         <dd>No. The scanner is offline and dependency-free at runtime. Snapshot and Deep Audit review only the report artifacts you choose to send.</dd>
         <dt>What does the scanner not cover?</dt>
-        <dd>Runtime behavior, live exploitability, and supply-chain vetting of third-party server code. Those are human-review items in the Deep Audit tier.</dd>
+        <dd>Runtime behavior, live attack resistance, and supply-chain vetting of third-party server code. Those are human-review items in the Deep Audit tier.</dd>
       </dl>
     </section>
   </main>
