@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+import { auditConfig, dedupeTools } from "../src/runner.js";
+
+function dupeConfig() {
+  return {
+    servers: [
+      {
+        name: "d",
+        transport: "stdio",
+        command: "c",
+        version: "1",
+        auditLog: true,
+        tools: [
+          { name: "delete_x", params: {} },
+          { name: "delete_x", params: {} },
+          { name: "ping", params: {} },
+        ],
+      },
+    ],
+  };
+}
+
+describe("tool dedupe (plan: first wins + one warning)", () => {
+  it("folds duplicate tools by (server, name), first wins", () => {
+    const { config, warnings } = dedupeTools(dupeConfig());
+    const names = (config.servers[0] as { tools: { name: string }[] }).tools.map((t) => t.name);
+    expect(names).toEqual(["delete_x", "ping"]);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain('duplicate tool "delete_x"');
+  });
+
+  it("audit emits one finding plus one warning for duplicates", () => {
+    const result = auditConfig(dupeConfig(), "test");
+    const priv = result.checks.find((c) => c.checkId === "PRIV-01");
+    expect(priv?.findings).toHaveLength(1);
+    expect(result.warnings).toHaveLength(1);
+  });
+
+  it("no warnings when tools are unique", () => {
+    const { warnings } = dedupeTools({
+      servers: [{ name: "d", tools: [{ name: "a" }, { name: "b" }] }],
+    });
+    expect(warnings).toHaveLength(0);
+  });
+});

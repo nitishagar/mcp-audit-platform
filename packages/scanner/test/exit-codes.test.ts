@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,6 +67,30 @@ describe("CLI exit codes", () => {
     silence();
     const code = main(["scan", fixture("mixed.json"), "--format", "json", "--fail-on", "critical"]);
     expect(code).toBe(2);
+  });
+
+  it("oversize input → 2 at CLI level", () => {
+    silence();
+    const code = main(["scan", fixture("clean.json"), "--format", "json", "--max-bytes", "10"]);
+    expect(code).toBe(2);
+  });
+
+  it("unwritable --out-dir → 2", () => {
+    silence();
+    const blocker = join(mkdtempSync(join(tmpdir(), "w-")), "file");
+    writeFileSync(blocker, "x");
+    const code = main(["scan", fixture("clean.json"), "--format", "all", "--out-dir", blocker]);
+    expect(code).toBe(2);
+  });
+
+  it("mid-write failure → 2 with partial files removed", () => {
+    silence();
+    const outDir = mkdtempSync(join(tmpdir(), "w-"));
+    // audit.sarif as a directory makes the second write fail after audit.json lands.
+    mkdirSync(join(outDir, "audit.sarif"));
+    const code = main(["scan", fixture("clean.json"), "--format", "all", "--out-dir", outDir]);
+    expect(code).toBe(2);
+    expect(existsSync(join(outDir, "audit.json"))).toBe(false);
   });
 
   it("--format all writes audit.json, audit.sarif, summary.md", () => {

@@ -18,7 +18,7 @@ import { SEVERITY_RANK, type Severity } from "./schema.js";
 
 const VERSION = "0.1.0";
 
-const HELP = `mcp-audit ${VERSION} — static MCP / AI agent config audit
+export const HELP = `mcp-audit ${VERSION} — static MCP / AI agent config audit
 
 Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]

@@ -32,13 +32,16 @@ export const VALUE_PATTERNS: { name: string; re: RegExp }[] = [
 const DENY = new Set<string>(KEY_DENYLIST.map((k) => k.toLowerCase()));
 
 export function isDenylistedKey(key: string): boolean {
-  const lower = key.toLowerCase();
-  if (DENY.has(lower)) return true;
-  // Substring match so apiKey, auth_token, webhook_url etc. are covered.
-  for (const d of DENY) {
-    if (lower.includes(d)) return true;
-  }
-  return false;
+  // Segment-aware match: the whole normalized key or any segment must EQUAL a
+  // denylisted term. Substring matching is banned — it flags `author` via `auth`.
+  const normalized = key.toLowerCase().replace(/[_-]+/g, "");
+  if (DENY.has(normalized)) return true;
+  // Split on _/-/whitespace AND camel boundaries; every segment must equal a term.
+  const segments = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[\s_-]+/)
+    .map((s) => s.toLowerCase());
+  return segments.some((s) => DENY.has(s));
 }
 
 /** Redact secret-shaped substrings inside a free-text string. */

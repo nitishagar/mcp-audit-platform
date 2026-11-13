@@ -1,5 +1,6 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CHECKS } from "../src/checks/index.js";
@@ -14,9 +15,25 @@ describe("input-validation gate", () => {
     expect("error" in loaded && loaded.error.kind).toBe("parse");
   });
 
-  it("rejects empty {} and missing-servers shapes", () => {
+  it("rejects empty {}", () => {
     const empty = loadConfig(fixture("empty.json"), 2 * 1024 * 1024);
     expect("error" in empty && empty.error.kind).toBe("shape");
+  });
+
+  it("rejects missing/invalid servers shapes", () => {
+    const dir = mkdtempSync(join(tmpdir(), "shape-"));
+    const cases: [string, string][] = [
+      ["empty-array", '{"servers": []}'],
+      ["wrong-type", '{"servers": "x"}'],
+      ["missing-key", '{"foo": 1}'],
+      ["top-array", "[]"],
+    ];
+    for (const [name, body] of cases) {
+      const path = join(dir, `${name}.json`);
+      writeFileSync(path, body);
+      const loaded = loadConfig(path, 2 * 1024 * 1024);
+      expect("error" in loaded && loaded.error.kind, name).toBe("shape");
+    }
   });
 
   it("rejects oversize input", () => {

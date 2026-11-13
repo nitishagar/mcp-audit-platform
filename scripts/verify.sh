@@ -18,5 +18,6 @@ pnpm test
 
 echo "== copy-guard =="
 pnpm copy-guard
+bash scripts/test-copy-guard.sh
 
 echo "VERIFY OK"

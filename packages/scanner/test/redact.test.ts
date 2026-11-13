@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { emitJson, emitSarif, emitSummary } from "../src/emit.js";
-import { redactString, redactValue } from "../src/redact.js";
+import { isDenylistedKey, redactString, redactValue } from "../src/redact.js";
 import { auditConfig, loadConfig } from "../src/runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -49,5 +49,41 @@ describe("redaction (I4)", () => {
     expect(redactValue("auth_token", "live-value-2")).toBe("[REDACTED:auth_token]");
     expect(redactString("key sk-ant-secretvalue99 here")).toBe("key [REDACTED:pattern] here");
     expect(redactValue("notes", "nothing secret")).toBe("nothing secret");
+  });
+
+  it("innocent keys containing denylist substrings are not secrets (F1)", () => {
+    // `author` contains `auth` — substring matching would false-positive here.
+    expect(isDenylistedKey("author")).toBe(false);
+    expect(isDenylistedKey("authentication")).toBe(false);
+    expect(isDenylistedKey("authorized_by")).toBe(false);
+    const config = {
+      servers: [
+        {
+          name: "t",
+          transport: "stdio",
+          command: "c",
+          version: "1",
+          auditLog: true,
+          author: "Alice Cooper",
+          tools: [],
+        },
+      ],
+    };
+    const result = auditConfig(config, "test");
+    const sec01 = result.checks.find((c) => c.checkId === "SEC-01");
+    expect(sec01?.status).toBe("pass");
+  });
+
+  it("segment-aware matching still catches compound credential keys", () => {
+    for (const key of [
+      "api_key",
+      "apiKey",
+      "auth_token",
+      "webhook_url",
+      "clientSecret",
+      "bearer",
+    ]) {
+      expect(isDenylistedKey(key), key).toBe(true);
+    }
   });
 });

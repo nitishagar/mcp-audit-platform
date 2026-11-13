@@ -78,12 +78,40 @@ export function loadConfig(
   return { config: parsed };
 }
 
+/**
+ * Plan-literal dedupe: fold duplicate tool entries per server by (server, tool
+ * name), first wins. Unnamed tools are never folded. Returns the folded config
+ * plus one warning per suppressed duplicate.
+ */
+export function dedupeTools(config: McpConfig): { config: McpConfig; warnings: string[] } {
+  const warnings: string[] = [];
+  const servers = config.servers.map((server, i) => {
+    if (server === null || typeof server !== "object") return server;
+    if (!Array.isArray(server.tools)) return server;
+    const seen = new Set<string>();
+    const tools = [];
+    for (const tool of server.tools) {
+      const name =
+        tool !== null && typeof tool === "object" ? (tool as { name?: unknown }).name : undefined;
+      if (typeof name !== "string" || !seen.has(name)) {
+        if (typeof name === "string") seen.add(name);
+        tools.push(tool);
+      } else {
+        warnings.push(`duplicate tool "${name}" on servers[${i}] ignored (first wins)`);
+      }
+    }
+    return { ...server, tools };
+  });
+  return { config: { servers }, warnings };
+}
+
 /** Build an AuditResult for a config that passed the gate. */
 export function auditConfig(config: McpConfig, toolVersion: string): AuditResult {
+  const folded = dedupeTools(config);
   const checks: CheckResult[] = CHECKS.map((check) => {
     let status: CheckStatus = "pass";
     try {
-      const raw = check.run(config);
+      const raw = check.run(folded.config);
       if (raw.length > 0) {
         status = raw.some((r) => r.status === "fail") ? "fail" : "unassessable";
         const findings = raw.map((r) => {
@@ -127,29 +155,13 @@ export function auditConfig(config: McpConfig, toolVersion: string): AuditResult
     }
   });
 
-  // Deterministic dedupe by (checkId, pointer): first wins, one warning.
-  const seen = new Set<string>();
-  const warnings: string[] = [];
-  for (const result of checks) {
-    result.findings = result.findings.filter((f) => {
-      const key = `${f.checkId}|${f.pointer}`;
-      if (seen.has(key)) {
-        warnings.push(`duplicate finding suppressed: ${key} (first wins)`);
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
-    if (result.findings.length === 0) result.status = "pass";
-  }
-
   return {
     tool: "mcp-audit",
     toolVersion,
     framework: FRAMEWORK,
     idScheme: ID_SCHEME,
     checks,
-    warnings,
+    warnings: folded.warnings,
   };
 }
 
