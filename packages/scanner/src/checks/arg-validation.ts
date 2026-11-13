@@ -1,14 +1,14 @@
 import type { Check, RawFinding } from "./types.js";
 import { serverLabel } from "./types.js";
 
-/** Description fragments associated with tool-poisoning / prompt injection. */
-export const POISON_PATTERNS: RegExp[] = [
-  /ignore (all )?(previous|prior|earlier) instructions/i,
-  /do not (tell|inform|show|reveal).*user/i,
-  /~\/\.ssh/,
-  /\/etc\/passwd/,
-  /send .*to https?:\/\//i,
-  /exfiltrat/i,
+/** Named description signals associated with tool-poisoning / prompt injection. */
+export const POISON_PATTERNS: { name: string; re: RegExp }[] = [
+  { name: "instruction-override", re: /ignore (all )?(previous|prior|earlier) instructions/i },
+  { name: "user-deception", re: /do not (tell|inform|show|reveal).*user/i },
+  { name: "credential-path", re: /~\/\.ssh/ },
+  { name: "system-file-access", re: /\/etc\/passwd/ },
+  { name: "external-exfiltration", re: /send .*to https?:\/\//i },
+  { name: "exfiltration-keyword", re: /exfiltrat/i },
 ];
 
 function paramCount(tool: { params?: unknown }): number {
@@ -56,15 +56,15 @@ export const descriptionPoisoningCheck: Check = {
         if (tool === null || typeof tool !== "object") return;
         const desc = (tool as { description?: unknown }).description;
         if (typeof desc !== "string") return;
-        const hit = POISON_PATTERNS.find((re) => {
-          re.lastIndex = 0;
-          return re.test(desc);
+        const hit = POISON_PATTERNS.find((p) => {
+          p.re.lastIndex = 0;
+          return p.re.test(desc);
         });
         if (hit) {
           out.push({
             status: "fail",
             pointer: `servers[${i}].tools[${j}].description`,
-            detail: `Tool "${String((tool as { name?: unknown }).name ?? j)}" on ${serverLabel(i, server.name)} matches poisoning pattern ${hit}; treat tool text as untrusted input`,
+            detail: `Tool "${String((tool as { name?: unknown }).name ?? j)}" on ${serverLabel(i, server.name)} matches poisoning signal "${hit.name}"; treat tool text as untrusted input`,
           });
         }
       });

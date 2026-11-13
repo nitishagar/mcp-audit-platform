@@ -180,13 +180,18 @@ button[data-copy]:hover,
 }
 
 .terminal {
-  background: var(--bg-deep);
+  /* pi.dev keeps demo terminals dark in both themes (--landing-demo-terminal-bg) */
+  background: #142433;
+  color: #f8f8f2;
   border: 1px solid var(--line);
   padding: 1.1rem;
   overflow-x: auto;
   font-size: 0.82rem;
   line-height: 1.6;
-  color: var(--muted-strong);
+}
+
+.terminal .sev-critical {
+  color: #ff8a6b;
 }
 
 .sev-critical {
@@ -283,6 +288,12 @@ button[data-copy]:hover,
   font-family: var(--mono);
   font-size: 0.78rem;
   color: var(--muted-strong);
+}
+
+.sample-table td:nth-child(2) {
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 0.78rem;
 }
 
 dl dt {

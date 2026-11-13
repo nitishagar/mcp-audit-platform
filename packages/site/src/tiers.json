@@ -12,7 +12,7 @@
   },
   {
     "name": "Snapshot",
-    "scope": "Self-serve report pack for one MCP deployment (up to 5 servers). Everything in Scanner, plus a board-ready PDF-ready summary and fix checklist.",
+    "scope": "Self-serve report pack for one MCP deployment (up to 5 servers). Everything in Scanner, plus a board-ready summary (PDF-ready) and fix checklist.",
     "deliverables": [
       "Technical report + 1-page exec summary",
       "Prioritized fix checklist",
