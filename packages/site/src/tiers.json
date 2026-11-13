@@ -1,0 +1,35 @@
+[
+  {
+    "name": "Scanner",
+    "scope": "Self-serve CLI on your own machine. Static config + tool-schema analysis, JSON/SARIF/Markdown output, exit codes for CI.",
+    "deliverables": [
+      "mcp-audit CLI (free forever)",
+      "OWASP MCP Top 10 mapped findings",
+      "SARIF for code scanning"
+    ],
+    "price": "Free",
+    "turnaround": "Instant"
+  },
+  {
+    "name": "Snapshot",
+    "scope": "Self-serve report pack for one MCP deployment (up to 5 servers). Everything in Scanner, plus a board-ready PDF-ready summary and fix checklist.",
+    "deliverables": [
+      "Technical report + 1-page exec summary",
+      "Prioritized fix checklist",
+      "30-day re-scan"
+    ],
+    "price": "$490",
+    "turnaround": "Same day"
+  },
+  {
+    "name": "Deep Audit",
+    "scope": "Scanner plus human review of one agent system (up to 15 servers, tool inventory, auth review, poisoning review). Fixed scope, fixed price.",
+    "deliverables": [
+      "Everything in Snapshot",
+      "Human-reviewed findings + remediation workshop",
+      "2 retests within 60 days"
+    ],
+    "price": "$1,900",
+    "turnaround": "5 days"
+  }
+]
