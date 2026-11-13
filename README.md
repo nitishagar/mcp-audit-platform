@@ -21,4 +21,4 @@ pnpm verify   # typecheck + lint + build + test + copy-guard
 ## Disclaimer
 
 This project performs static configuration analysis. It is not a penetration
-test and does not probe, exploit, or certify any live system.
+test; it never probes live systems or runs attacks.

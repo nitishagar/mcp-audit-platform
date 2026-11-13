@@ -3,8 +3,8 @@
 Deterministic offline static audit of MCP server / AI agent configs.
 Emits JSON, SARIF 2.1.0, and a Markdown summary. Zero runtime dependencies.
 
-Static analysis only — not a penetration test. It does not probe or exploit
-live systems.
+Static analysis only — not a penetration test. It never probes live systems
+or runs attacks.
 
 ## Usage
 

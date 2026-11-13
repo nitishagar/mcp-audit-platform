@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * mcp-audit CLI: deterministic offline static audit of MCP configs.
- * Static analysis only — not a penetration test.
+ * Static analysis only — not a penetration test; never probes live systems.
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -30,8 +30,8 @@ audit.sarif and summary.md into --out-dir (default ./audit-out).
 Exit codes: 0 clean · 1 findings at/above --fail-on (default critical) ·
 2 unassessable input or write error (takes precedence over 1).
 
-Static analysis only — not a penetration test. It does not probe or
-exploit live systems.`;
+Static analysis only — not a penetration test. It never probes live
+systems or runs attacks.`;
 
 interface Options {
   format: Format | "all";
