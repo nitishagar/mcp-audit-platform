@@ -42,4 +42,14 @@ describe("tool dedupe (plan: first wins + one warning)", () => {
     });
     expect(warnings).toHaveLength(0);
   });
+
+  it("secret-shaped tool names are redacted in warnings (F2)", () => {
+    const token = "ghp_abcdefghij12345678";
+    const { warnings } = dedupeTools({
+      servers: [{ name: "s", tools: [{ name: token }, { name: token }] }],
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).not.toContain(token);
+    expect(warnings[0]).toContain("[REDACTED:pattern]");
+  });
 });

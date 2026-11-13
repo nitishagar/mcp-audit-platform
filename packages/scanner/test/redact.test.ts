@@ -1,10 +1,11 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { emitJson, emitSarif, emitSummary } from "../src/emit.js";
 import { isDenylistedKey, redactString, redactValue } from "../src/redact.js";
-import { auditConfig, loadConfig } from "../src/runner.js";
+import { auditConfig, gateFailureResult, loadConfig } from "../src/runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name: string) => resolve(here, "../fixtures", name);
@@ -40,7 +41,23 @@ describe("redaction (I4)", () => {
     expect("error" in loaded).toBe(true);
     if ("error" in loaded) {
       expect(loaded.error.message).not.toContain(CORRUPT_SECRET);
-      expect(loaded.error.message).toContain("[REDACTED:pattern]");
+      expect(loaded.error.message).toContain("is not valid JSON");
+    }
+  });
+
+  it("unshaped key-context secrets never appear in parse errors (F1)", () => {
+    // Pattern scrubbing cannot see key context, so parse errors carry no input.
+    const dir = mkdtempSync(join(tmpdir(), "f1-"));
+    const path = join(dir, "leak.json");
+    writeFileSync(path, '{"servers": [{"name": "pay", "api_key": "TOPSECRET-PW-9z8y7x", }');
+    const loaded = loadConfig(path, 2 * 1024 * 1024);
+    expect("error" in loaded).toBe(true);
+    if ("error" in loaded) {
+      expect(loaded.error.message).not.toContain("TOPSECRET-PW-9z8y7x");
+      const gated = gateFailureResult(loaded.error.message, "test");
+      expect(emitJson(gated)).not.toContain("TOPSECRET-PW-9z8y7x");
+      expect(emitSarif(gated)).not.toContain("TOPSECRET-PW-9z8y7x");
+      expect(emitSummary(gated)).not.toContain("TOPSECRET-PW-9z8y7x");
     }
   });
 
@@ -72,6 +89,27 @@ describe("redaction (I4)", () => {
     const result = auditConfig(config, "test");
     const sec01 = result.checks.find((c) => c.checkId === "SEC-01");
     expect(sec01?.status).toBe("pass");
+  });
+
+  it("secret-shaped substrings in key names are redacted in pointers (F3)", () => {
+    const leakyKey = "token AKIAIOSFODNN7CANARY01";
+    const config = {
+      servers: [
+        {
+          name: "s",
+          transport: "stdio",
+          version: "1",
+          auditLog: true,
+          tools: [],
+          [leakyKey]: "liveval123",
+        },
+      ],
+    };
+    const result = auditConfig(config, "test");
+    const json = emitJson(result);
+    expect(json).not.toContain("AKIAIOSFODNN7CANARY01");
+    const sec01 = result.checks.find((c) => c.checkId === "SEC-01");
+    expect(sec01?.status).toBe("fail");
   });
 
   it("segment-aware matching still catches compound credential keys", () => {

@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from "node:fs";
+import { lstatSync, readFileSync } from "node:fs";
 import { CHECKS } from "./checks/index.js";
 import { FRAMEWORK, severityFor } from "./severity-map.js";
 import {
@@ -39,12 +39,21 @@ export function loadConfig(
   path: string,
   maxBytes: number,
 ): { config: McpConfig } | { error: LoadError } {
-  let size: number;
+  let stat: { size: number; isSymbolicLink: () => boolean; isFile: () => boolean };
   try {
-    size = statSync(path).size;
+    stat = lstatSync(path);
   } catch {
     return { error: { kind: "parse", message: `cannot read ${path}` } };
   }
+  // Refuse symlinks (F1b: arbitrary-file-prefix disclosure) and non-regular
+  // files (FIFOs hang the read; devices lie about size).
+  if (stat.isSymbolicLink()) {
+    return { error: { kind: "parse", message: `${path} is a symlink; refusing to scan` } };
+  }
+  if (!stat.isFile()) {
+    return { error: { kind: "parse", message: `${path} is not a regular file; refusing to scan` } };
+  }
+  const size = stat.size;
   if (size > maxBytes) {
     return {
       error: {
@@ -62,10 +71,12 @@ export function loadConfig(
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
-  } catch {
-    // Never echo raw input: even the snippet is redacted (H2 teeth).
-    const snippet = redactString(raw.slice(0, 200));
-    return { error: { kind: "parse", message: `${path} is not valid JSON: ${snippet}` } };
+  } catch (err) {
+    // Never echo raw input: key-context secrets survive pattern scrubbing (F1).
+    // Only the parser's error position (a number, never input) is reported.
+    const position = /position (\d+)/.exec(err instanceof Error ? err.message : "")?.[1];
+    const where = position !== undefined ? ` at position ${position}` : "";
+    return { error: { kind: "parse", message: `${path} is not valid JSON${where}` } };
   }
   if (!validateShape(parsed)) {
     return {
@@ -97,7 +108,10 @@ export function dedupeTools(config: McpConfig): { config: McpConfig; warnings: s
         if (typeof name === "string") seen.add(name);
         tools.push(tool);
       } else {
-        warnings.push(`duplicate tool "${name}" on servers[${i}] ignored (first wins)`);
+        // Tool names are attacker-influenced: route through redaction (F2).
+        warnings.push(
+          redactString(`duplicate tool "${name}" on servers[${i}] ignored (first wins)`),
+        );
       }
     }
     return { ...server, tools };
@@ -120,7 +134,7 @@ export function auditConfig(config: McpConfig, toolVersion: string): AuditResult
             check.id,
             r.status,
             resolved.severity,
-            r.pointer,
+            redactString(r.pointer),
             redactString(r.detail),
             [`${FRAMEWORK}: ${resolved.category}`, ...resolved.cveRefs],
             resolved.unmapped,

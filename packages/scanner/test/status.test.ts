@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -44,6 +44,20 @@ describe("input-validation gate", () => {
   it("accepts well-formed configs", () => {
     const loaded = loadConfig(fixture("clean.json"), 2 * 1024 * 1024);
     expect("config" in loaded).toBe(true);
+  });
+
+  it("refuses symlinks without reading the target (F1b)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "f1b-"));
+    const victim = join(dir, "victim.txt");
+    writeFileSync(victim, "PLAINTEXT-BOOTY-12345");
+    const link = join(dir, "link.json");
+    symlinkSync(victim, link);
+    const loaded = loadConfig(link, 2 * 1024 * 1024);
+    expect("error" in loaded).toBe(true);
+    if ("error" in loaded) {
+      expect(loaded.error.message).toContain("symlink");
+      expect(loaded.error.message).not.toContain("PLAINTEXT-BOOTY-12345");
+    }
   });
 });
 

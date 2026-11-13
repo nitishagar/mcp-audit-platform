@@ -4,10 +4,10 @@ import { serverLabel } from "./types.js";
 /** Named description signals associated with tool-poisoning / prompt injection. */
 export const POISON_PATTERNS: { name: string; re: RegExp }[] = [
   { name: "instruction-override", re: /ignore (all )?(previous|prior|earlier) instructions/i },
-  { name: "user-deception", re: /do not (tell|inform|show|reveal).*user/i },
+  { name: "user-deception", re: /do not (tell|inform|show|reveal)[\s\S]{0,200}user/i },
   { name: "credential-path", re: /~\/\.ssh/ },
   { name: "system-file-access", re: /\/etc\/passwd/ },
-  { name: "external-exfiltration", re: /send .*to https?:\/\//i },
+  { name: "external-exfiltration", re: /send [\s\S]{0,200}to https?:\/\//i },
   { name: "exfiltration-keyword", re: /exfiltrat/i },
 ];
 
