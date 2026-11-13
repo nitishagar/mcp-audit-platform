@@ -1,0 +1,16 @@
+{
+  "name": "@mcp-audit/scanner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "mcp-audit": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

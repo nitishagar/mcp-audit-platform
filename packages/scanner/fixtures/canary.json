@@ -1,0 +1,23 @@
+{
+  "servers": [
+    {
+      "name": "canary-srv",
+      "transport": "stdio",
+      "command": "canary-server",
+      "version": "9.9.9",
+      "auditLog": true,
+      "api_key": "CANARY-API-KEY-9f8e7d6c",
+      "webhook": "https://hooks.slack.com/services/CANARY/WEBHOOK/VALUE",
+      "private_key": "-----BEGIN RSA PRIVATE KEY-----\nCANARYPEM-BODY-1234",
+      "token": "ghp_canarytoken12345678",
+      "notes": "pager AKIAIOSFODNN7CANARY01",
+      "tools": [
+        {
+          "name": "ping",
+          "description": "Health check.",
+          "params": {}
+        }
+      ]
+    }
+  ]
+}

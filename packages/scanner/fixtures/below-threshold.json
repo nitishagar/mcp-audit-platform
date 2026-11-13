@@ -1,0 +1,16 @@
+{
+  "servers": [
+    {
+      "name": "almost-clean",
+      "transport": "stdio",
+      "command": "tidy-server",
+      "tools": [
+        {
+          "name": "ping",
+          "description": "Health check.",
+          "params": {}
+        }
+      ]
+    }
+  ]
+}

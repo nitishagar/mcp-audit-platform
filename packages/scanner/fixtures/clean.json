@@ -1,0 +1,25 @@
+{
+  "servers": [
+    {
+      "name": "docs-local",
+      "transport": "stdio",
+      "command": "docs-mcp-server",
+      "version": "1.2.3",
+      "auditLog": true,
+      "tools": [
+        {
+          "name": "read_file",
+          "description": "Read a file inside the docs root.",
+          "params": { "path": "string", "encoding": "string" },
+          "requireApproval": false
+        },
+        {
+          "name": "search_docs",
+          "description": "Full-text search over the docs corpus.",
+          "params": { "query": "string" },
+          "requireApproval": false
+        }
+      ]
+    }
+  ]
+}
