@@ -82,6 +82,10 @@ describe("redaction (I4)", () => {
       "webhook_url",
       "clientSecret",
       "bearer",
+      "private_key",
+      "privateKey",
+      "access_key",
+      "accessKey",
     ]) {
       expect(isDenylistedKey(key), key).toBe(true);
     }

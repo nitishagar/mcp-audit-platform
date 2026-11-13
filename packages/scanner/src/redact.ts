@@ -30,12 +30,14 @@ export const VALUE_PATTERNS: { name: string; re: RegExp }[] = [
 ];
 
 const DENY = new Set<string>(KEY_DENYLIST.map((k) => k.toLowerCase()));
+/** Whole-key set with separators stripped, so `private_key` ≡ `privatekey`. */
+const DENY_NORMALIZED = new Set<string>([...DENY].map((k) => k.replace(/[_-]+/g, "")));
 
 export function isDenylistedKey(key: string): boolean {
   // Segment-aware match: the whole normalized key or any segment must EQUAL a
   // denylisted term. Substring matching is banned — it flags `author` via `auth`.
   const normalized = key.toLowerCase().replace(/[_-]+/g, "");
-  if (DENY.has(normalized)) return true;
+  if (DENY_NORMALIZED.has(normalized)) return true;
   // Split on _/-/whitespace AND camel boundaries; every segment must equal a term.
   const segments = key
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
