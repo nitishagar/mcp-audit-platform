@@ -1,4 +1,5 @@
 import { CHECKS } from "./checks/index.js";
+import { ruleMeta } from "./rules.js";
 import { emitHtml } from "./emit-html.js";
 import type { AuditResult } from "./runner.js";
 import { SEVERITY_RANK } from "./schema.js";
@@ -40,14 +41,20 @@ const SARIF_LEVEL: Record<string, string> = {
  * calls), `artifactLocation.uri` falls back to the finding's JSON pointer,
  * which stays schema-valid. CLI callers always pass the real path. */
 export function emitSarif(result: AuditResult, sourcePath?: string): string {
-  const rules = CHECKS.map((c) => ({
-    id: c.id,
-    name: c.id,
-    shortDescription: { text: c.description },
-    fullDescription: { text: c.description },
-    help: { text: c.description },
-    helpUri: "https://github.com/nitishagar/mcp-audit-platform",
-  }));
+  // rules.ts is the single source for rule help (C3): short text = the check
+  // description, full/help = the rationale + remediation. helpUri anchors the
+  // README coverage table (the stable public docs until the site domain lands).
+  const rules = CHECKS.map((c) => {
+    const meta = ruleMeta(c.id);
+    return {
+      id: c.id,
+      name: c.id,
+      shortDescription: { text: c.description },
+      fullDescription: { text: meta ? `${meta.rationale}` : c.description },
+      help: { text: meta ? `Fix: ${meta.remediation}` : c.description },
+      helpUri: "https://github.com/nitishagar/mcp-audit-platform#check-coverage-i8",
+    };
+  });
   const locations = (f: { pointer: string }) => [
     {
       physicalLocation: {

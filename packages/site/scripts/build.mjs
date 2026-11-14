@@ -154,6 +154,22 @@ writeFileSync(
 <p>0 clean (coverage gaps allowed) · 1 findings at/above <code>--fail-on</code> · 2 input-unassessable or write error.</p>
 <h2>Checks</h2>
 <table><thead><tr><th>Check</th><th>Title</th></tr></thead><tbody>${docsRows}</tbody></table>
+<h2>Use in CI (GitHub Action)</h2>
+<p>Once the npm package is published, wire the scanner into CI (SARIF uploads to GitHub code scanning are free for public repos):</p>
+<pre class="changelog">jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nitishagar/mcp-audit-platform@v1
+        with:
+          config: mcp.json
+          fail-on: high
+          upload-sarif: "true"</pre>
+<p class="muted">Before the first npm publish, run the scanner from source (clone + <code>pnpm build</code>, then <code>node packages/scanner/dist/cli.js …</code>). Full recipes: the scanner README and <code>action.yml</code> on GitHub.</p>
 <p class="muted">Full CLI reference: <code>mcp-audit --help</code> and the scanner README on GitHub.</p>`,
   ),
 );

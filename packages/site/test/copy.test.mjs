@@ -65,6 +65,14 @@ describe("C3/C6 site content", () => {
     expect(sample).toContain("Static analysis only — not a penetration test");
   });
 
+  it("docs.html carries the CI usage recipe (review item 4)", () => {
+    const docs = readFileSync(resolve(distDir, "docs.html"), "utf8");
+    expect(docs).toContain("Use in CI (GitHub Action)");
+    expect(docs).toContain("nitishagar/mcp-audit-platform@v1");
+    expect(docs).toContain("upload-sarif");
+    expect(docs).toContain("security-events: write");
+  });
+
   it("every numeric claim in the announce bar has a claims.json entry with a source", () => {
     const html = builtHtml();
     const announce = html.match(/class="announce"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";

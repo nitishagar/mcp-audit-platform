@@ -26,12 +26,16 @@ describe("SARIF output (I5)", () => {
     expect(
       driver.rules.every(
         (r: { helpUri: string }) =>
-          r.helpUri === "https://github.com/nitishagar/mcp-audit-platform",
+          r.helpUri === "https://github.com/nitishagar/mcp-audit-platform#check-coverage-i8",
       ),
     ).toBe(true);
     expect(driver.rules.every((r: { help: { text: string } }) => r.help.text.length > 0)).toBe(
       true,
     );
+    // help.text comes from rules.ts remediation (single source, review item 3)
+    expect(
+      driver.rules.some((r: { help: { text: string } }) => r.help.text.startsWith("Fix: ")),
+    ).toBe(true);
   });
 
   it("carries the ingestion contract on every result", () => {
