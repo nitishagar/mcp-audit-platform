@@ -31,7 +31,7 @@ export function emitSarif(result: AuditResult): string {
     name: c.id,
     shortDescription: { text: c.description },
     fullDescription: { text: c.description },
-    helpUri: "https://github.com/mcp-audit-platform",
+    helpUri: "https://github.com/nitishagar/mcp-audit-platform",
   }));
   const results = [
     ...allFailFindings(result).map((f) => ({

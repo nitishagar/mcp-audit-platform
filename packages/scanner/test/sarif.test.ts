@@ -18,6 +18,12 @@ describe("SARIF output (I5)", () => {
     expect(driver.name).toBe("mcp-audit");
     expect(driver.version).toBe("0.1.0");
     expect(driver.rules.map((r: { id: string }) => r.id).sort()).toEqual([...CHECK_IDS].sort());
+    expect(
+      driver.rules.every(
+        (r: { helpUri: string }) =>
+          r.helpUri === "https://github.com/nitishagar/mcp-audit-platform",
+      ),
+    ).toBe(true);
   });
 
   it("links every result to its rule", () => {

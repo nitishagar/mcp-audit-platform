@@ -14,6 +14,8 @@ Static analysis only — not a penetration test. See each package README.
 ## Develop
 
 ```sh
+git clone https://github.com/nitishagar/mcp-audit-platform
+cd mcp-audit-platform
 pnpm install
 pnpm verify   # typecheck + lint + build + test + copy-guard
 ```
