@@ -3,8 +3,8 @@
  * mcp-audit CLI: deterministic offline static audit of MCP configs.
  * Static analysis only — not a penetration test; never probes live systems.
  */
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Format, emit } from "./emit.js";
 import { emitHtml } from "./emit-html.js";
@@ -22,7 +22,18 @@ import { parseToolsFile } from "./adapters/tools.js";
 import { CLIENT_FORMATS, type ClientFormat } from "./adapters/types.js";
 import { SEVERITY_RANK, type Severity } from "./schema.js";
 
-const VERSION = "0.1.0";
+/**
+ * B1: single source of truth for the tool version — the package manifest.
+ * dist/cli.js -> ../../package.json resolves to packages/scanner/package.json.
+ */
+const VERSION = (() => {
+  try {
+    const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../package.json");
+    return (JSON.parse(readFileSync(pkgPath, "utf8")) as { version: string }).version;
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 export const HELP = `mcp-audit ${VERSION} — static MCP / AI agent config audit
 
