@@ -9,7 +9,7 @@ if [ ! -f dist/index.html ]; then
 fi
 
 PORT=8137
-python3 -m http.server "$PORT" --directory dist >/tmp/site-smoke.log 2>&1 &
+python3 -m http.server "$PORT" --bind 127.0.0.1 --directory dist >/tmp/site-smoke.log 2>&1 &
 PID=$!
 cleanup() { kill "$PID" 2>/dev/null || true; }
 trap cleanup EXIT
