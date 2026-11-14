@@ -1,8 +1,9 @@
 import { CHECKS } from "./checks/index.js";
+import { emitHtml } from "./emit-html.js";
 import type { AuditResult } from "./runner.js";
 import { SEVERITY_RANK } from "./schema.js";
 
-export type Format = "json" | "sarif" | "summary";
+export type Format = "json" | "sarif" | "summary" | "html";
 
 function allFailFindings(result: AuditResult) {
   return result.checks.flatMap((c) => c.findings.filter((f) => f.status === "fail"));
@@ -154,5 +155,6 @@ export function emitSummary(result: AuditResult): string {
 export function emit(result: AuditResult, format: Format, sourcePath?: string): string {
   if (format === "sarif") return emitSarif(result, sourcePath);
   if (format === "summary") return emitSummary(result);
+  if (format === "html") return emitHtml(result);
   return emitJson(result);
 }

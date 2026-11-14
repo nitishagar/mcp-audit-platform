@@ -7,6 +7,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Format, emit } from "./emit.js";
+import { emitHtml } from "./emit-html.js";
 import { redactString } from "./redact.js";
 import {
   DEFAULT_MAX_BYTES,
@@ -29,11 +30,12 @@ Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
     [--strict] [--client claude-desktop|claude-code|cursor|vscode|windsurf|native]
+  mcp-audit report <audit.json> [--format html]   # re-render a saved audit
     [--tools tools-list.json]  # replaces any native tools[] on matched servers
   mcp-audit scan --discover    # audit every well-known client config in one run
 
 Formats: a single format writes to stdout; "all" writes audit.json,
-audit.sarif and summary.md into --out-dir (default ./audit-out).
+audit.sarif, report.html and summary.md into --out-dir (default ./audit-out).
 
 Input: auto-detects the client format (mcpServers{…}, VS Code servers{…},
 Claude Code ~/.claude.json, native servers[…]); --client overrides.
@@ -57,6 +59,7 @@ interface Options {
   client?: ClientFormat;
   toolsPath?: string;
   discover: boolean;
+  reportMode?: boolean;
 }
 
 function parseArgs(argv: string[]): { configPath: string; options: Options } {
@@ -100,6 +103,14 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
       process.exit(2);
     } else positional.push(arg);
   }
+  if (positional[0] === "report") {
+    options.reportMode = true;
+    if (typeof positional[1] !== "string") {
+      console.error(HELP);
+      process.exit(2);
+    }
+    return { configPath: positional[1], options };
+  }
   if (positional[0] !== "scan") {
     console.error(HELP);
     process.exit(2);
@@ -112,7 +123,7 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     console.error(HELP);
     process.exit(2);
   }
-  if (!["json", "sarif", "summary", "all"].includes(options.format)) {
+  if (!["json", "sarif", "summary", "html", "all"].includes(options.format)) {
     console.error(`invalid --format: ${options.format}\n${HELP}`);
     process.exit(2);
   }
@@ -149,6 +160,7 @@ function writeAll(outDir: string, result: AuditResult, sourcePath: string): void
   const files: [string, Format][] = [
     ["audit.json", "json"],
     ["audit.sarif", "sarif"],
+    ["report.html", "html"],
     ["summary.md", "summary"],
   ];
   const written: string[] = [];
@@ -189,8 +201,34 @@ function runDiscover(options: Options): number {
   return exitCode(result, options.failOn, options.strict);
 }
 
+/** A6: re-render a saved audit.json (the Snapshot fulfilment path). */
+function runReport(auditPath: string, options: Options): number {
+  const file = readJsonFile(auditPath, options.maxBytes);
+  if ("error" in file) {
+    console.error(`mcp-audit: ${file.error.message}`);
+    return 2;
+  }
+  const parsed = file.parsed as Partial<AuditResult>;
+  if (
+    parsed === null ||
+    typeof parsed !== "object" ||
+    !Array.isArray(parsed.checks) ||
+    typeof parsed.tool !== "string"
+  ) {
+    console.error(`mcp-audit: ${auditPath} is not an audit.json produced by mcp-audit scan`);
+    return 2;
+  }
+  const result = parsed as AuditResult;
+  const html = options.format === "all" ? emitHtml(result) : emit(result, options.format);
+  process.stdout.write(html);
+  return 0;
+}
+
 export function main(argv: string[]): number {
   const { configPath, options } = parseArgs(argv);
+  if (options.reportMode) {
+    return runReport(configPath, options);
+  }
   if (options.discover) {
     return runDiscover(options);
   }
