@@ -62,12 +62,48 @@ describe("input-validation gate", () => {
 });
 
 describe("check statuses (I1)", () => {
-  it("clean fixture: every check passes, zero findings", () => {
+  it("clean fixture: every check passes or is not_applicable, zero findings", () => {
     const loaded = loadConfig(fixture("clean.json"), 2 * 1024 * 1024);
     if (!("config" in loaded)) throw new Error("clean fixture failed to load");
     const result = auditConfig(loaded.config, "test");
-    expect(result.checks.every((c) => c.status === "pass")).toBe(true);
+    // clean.json is stdio-only: AUTH-* are not_applicable, everything else passes.
+    expect(result.checks.every((c) => c.status === "pass" || c.status === "not_applicable")).toBe(
+      true,
+    );
+    expect(
+      result.checks.filter((c) => c.status === "not_applicable").map((c) => c.checkId),
+    ).toEqual(["AUTH-01", "AUTH-02", "AUTH-03"]);
     expect(result.checks.flatMap((c) => c.findings)).toHaveLength(0);
+  });
+
+  it("no tool schemas: tool checks are coverage-unassessable, never pass (A0/E2)", () => {
+    const loaded = loadConfig(fixture("no-tools.json"), 2 * 1024 * 1024);
+    if (!("config" in loaded)) throw new Error("no-tools fixture failed to load");
+    const result = auditConfig(loaded.config, "test");
+    const byId = new Map(result.checks.map((c) => [c.checkId, c]));
+    for (const id of ["PRIV-01", "PRIV-02", "ARG-01", "ARG-02"]) {
+      const c = byId.get(id);
+      expect(c?.status, id).toBe("unassessable");
+      expect(c?.scope, id).toBe("coverage");
+      expect(c?.findings.length, id).toBeGreaterThan(0);
+    }
+    // stdio-only: AUTH-* not_applicable (distinct from pass).
+    for (const id of ["AUTH-01", "AUTH-02", "AUTH-03"]) {
+      expect(byId.get(id)?.status, id).toBe("not_applicable");
+      expect(byId.get(id)?.findings, id).toHaveLength(0);
+    }
+    // Well-formed non-tool checks still pass.
+    expect(byId.get("INV-01")?.status).toBe("pass");
+    expect(byId.get("LOG-01")?.status).toBe("pass");
+  });
+
+  it("malformed server entry (no transport keys) is input-scoped, not coverage (A0)", () => {
+    const raw = JSON.parse(readFileSync(fixture("mixed.json"), "utf8"));
+    const result = auditConfig(raw, "test");
+    expect(result.checks.every((c) => c.status === "unassessable" && c.scope === "input")).toBe(
+      true,
+    );
+    expect(result.checks.every((c) => c.findings.every((f) => f.scope === "input"))).toBe(true);
   });
 
   it("vulnerable fixture: fails include criticals with framework refs", () => {
@@ -81,10 +117,43 @@ describe("check statuses (I1)", () => {
     expect(fails.every((f) => f.checkId && f.pointer && f.detail)).toBe(true);
   });
 
-  it("gate failure: every check unassessable, zero pass", () => {
+  it("gate failure: every check unassessable (input scope), zero pass", () => {
     const result = gateFailureResult("not valid JSON", "test");
     expect(result.checks).toHaveLength(CHECKS.length);
-    expect(result.checks.every((c) => c.status === "unassessable")).toBe(true);
+    expect(result.checks.every((c) => c.status === "unassessable" && c.scope === "input")).toBe(
+      true,
+    );
     expect(result.checks.some((c) => c.status === "pass")).toBe(false);
   });
+});
+
+describe("junk tool entries (A0 red-team fix)", () => {
+  const junkCases: [string, unknown][] = [
+    ["null entry", [null]],
+    ["bare object entry", [{}]],
+    ["mixed junk and real", [null, { name: "read_file", description: "Reads." }]],
+  ];
+  for (const [label, tools] of junkCases) {
+    it(`tools with ${label} never yield a tool-check pass (I1)`, () => {
+      const raw = {
+        servers: [
+          {
+            name: "x",
+            transport: "stdio",
+            command: "c",
+            version: "1",
+            auditLog: true,
+            tools,
+          },
+        ],
+      };
+      const result = auditConfig(raw as never, "test");
+      const byId = new Map(result.checks.map((c) => [c.checkId, c]));
+      for (const id of ["PRIV-01", "ARG-01", "ARG-02"]) {
+        const c = byId.get(id);
+        expect(c?.status, `${id} ${label}`).toBe("unassessable");
+        expect(c?.scope, `${id} ${label}`).toBe("coverage");
+      }
+    });
+  }
 });

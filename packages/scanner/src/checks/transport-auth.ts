@@ -17,6 +17,7 @@ function transportUnknown(server: { transport?: unknown; url?: unknown }): boole
 export const remoteAuthCheck: Check = {
   id: "AUTH-01",
   description: "Remote (HTTP) servers require authentication",
+  requires: ["remote"],
   run: (config) => {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {
@@ -47,6 +48,7 @@ export const remoteAuthCheck: Check = {
 export const localhostBindingCheck: Check = {
   id: "AUTH-02",
   description: "Local HTTP servers bind localhost only, not 0.0.0.0",
+  requires: ["remote"],
   run: (config) => {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {
@@ -79,6 +81,7 @@ export const localhostBindingCheck: Check = {
 export const originValidationCheck: Check = {
   id: "AUTH-03",
   description: "HTTP servers validate the Origin header",
+  requires: ["remote"],
   run: (config) => {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {

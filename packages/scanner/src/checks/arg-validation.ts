@@ -1,5 +1,5 @@
 import type { Check, RawFinding } from "./types.js";
-import { serverLabel } from "./types.js";
+import { serverLabel, unassessableToolEntry } from "./types.js";
 
 /** Named description signals associated with tool-poisoning / prompt injection. */
 export const POISON_PATTERNS: { name: string; re: RegExp }[] = [
@@ -21,6 +21,7 @@ function paramCount(tool: { params?: unknown }): number {
 /** ARG-01: tools with excessive parameters (validation surface + token bloat). */
 export const paramCountCheck: Check = {
   id: "ARG-01",
+  requires: ["tools"],
   description: "Tools declare at most 8 parameters",
   run: (config) => {
     const out: RawFinding[] = [];
@@ -28,7 +29,18 @@ export const paramCountCheck: Check = {
       if (server === null || typeof server !== "object") return;
       const tools = Array.isArray(server.tools) ? server.tools : [];
       tools.forEach((tool, j) => {
-        if (tool === null || typeof tool !== "object") return;
+        if (tool === null || typeof tool !== "object") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry is not an object; cannot assess"),
+          );
+          return;
+        }
+        if (typeof (tool as { name?: unknown }).name !== "string") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry has no name; cannot assess"),
+          );
+          return;
+        }
         const n = paramCount(tool);
         if (n > 8) {
           out.push({
@@ -46,6 +58,7 @@ export const paramCountCheck: Check = {
 /** ARG-02: tool descriptions containing poisoning/injection signals. */
 export const descriptionPoisoningCheck: Check = {
   id: "ARG-02",
+  requires: ["tools"],
   description: "Tool descriptions contain no poisoning signals",
   run: (config) => {
     const out: RawFinding[] = [];
@@ -53,7 +66,18 @@ export const descriptionPoisoningCheck: Check = {
       if (server === null || typeof server !== "object") return;
       const tools = Array.isArray(server.tools) ? server.tools : [];
       tools.forEach((tool, j) => {
-        if (tool === null || typeof tool !== "object") return;
+        if (tool === null || typeof tool !== "object") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry is not an object; cannot assess"),
+          );
+          return;
+        }
+        if (typeof (tool as { name?: unknown }).name !== "string") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry has no name; cannot assess"),
+          );
+          return;
+        }
         const desc = (tool as { description?: unknown }).description;
         if (typeof desc !== "string") return;
         const hit = POISON_PATTERNS.find((p) => {

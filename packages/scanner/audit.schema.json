@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/nitishagar/mcp-audit-platform/packages/scanner/audit.schema.json",
+  "title": "mcp-audit AuditResult",
+  "description": "Output of `mcp-audit scan --format json` / audit.json. Schema version 2.0: adds not_applicable status, unassessable scope split (input vs coverage), and the schemaVersion field. Finding ids remain idScheme v1.",
+  "type": "object",
+  "required": [
+    "tool",
+    "toolVersion",
+    "framework",
+    "idScheme",
+    "schemaVersion",
+    "checks",
+    "warnings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "tool": { "type": "string", "const": "mcp-audit" },
+    "toolVersion": { "type": "string" },
+    "framework": { "type": "string" },
+    "idScheme": { "type": "string" },
+    "schemaVersion": { "type": "string", "const": "2.0" },
+    "checks": { "type": "array", "items": { "$ref": "#/$defs/checkResult" } },
+    "warnings": { "type": "array", "items": { "type": "string" } }
+  },
+  "$defs": {
+    "checkResult": {
+      "type": "object",
+      "required": ["checkId", "status", "findings"],
+      "additionalProperties": false,
+      "properties": {
+        "checkId": { "type": "string", "pattern": "^[A-Z]{3,4}-[0-9]{2}$" },
+        "status": { "enum": ["pass", "fail", "unassessable", "not_applicable"] },
+        "scope": { "enum": ["input", "coverage"] },
+        "findings": { "type": "array", "items": { "$ref": "#/$defs/finding" } }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "unassessable" } } },
+          "then": { "required": ["scope"] }
+        },
+        {
+          "if": { "properties": { "status": { "enum": ["pass", "not_applicable"] } } },
+          "then": { "properties": { "findings": { "maxItems": 0 } } }
+        }
+      ]
+    },
+    "finding": {
+      "type": "object",
+      "required": ["id", "checkId", "status", "severity", "pointer", "detail", "frameworkRefs"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+        "checkId": { "type": "string", "pattern": "^[A-Z]{3,4}-[0-9]{2}$" },
+        "status": { "enum": ["fail", "unassessable"] },
+        "severity": { "enum": ["critical", "high", "medium", "low"] },
+        "pointer": { "type": "string" },
+        "detail": { "type": "string" },
+        "frameworkRefs": { "type": "array", "items": { "type": "string" } },
+        "unmapped": { "type": "boolean", "const": true },
+        "scope": { "enum": ["input", "coverage"] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "unassessable" } } },
+          "then": { "required": ["scope"] }
+        }
+      ]
+    }
+  }
+}
