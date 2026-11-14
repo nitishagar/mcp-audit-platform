@@ -1,3 +1,4 @@
+import { redactString } from "../redact.js";
 import type { ClientFormat, NormalizedConfig, NormalizedServer } from "./types.js";
 import { CLIENT_FORMATS } from "./types.js";
 
@@ -97,8 +98,11 @@ function normalizeVscode(parsed: Record<string, unknown>): NormalizedConfig | nu
 }
 
 /** Claude Code `~/.claude.json`: top-level + per-project mcpServers (R5 §2). */
-function normalizeClaudeCode(parsed: Record<string, unknown>): NormalizedConfig | null {
+function normalizeClaudeCode(
+  parsed: Record<string, unknown>,
+): { config: NormalizedConfig; warnings: string[] } | null {
   const servers: NormalizedServer[] = [];
+  const warnings: string[] = [];
   const top = parsed["mcpServers"];
   if (top !== null && typeof top === "object" && !Array.isArray(top)) {
     servers.push(...normalizeMcpServersObject(top as Record<string, unknown>, "mcpServers"));
@@ -106,9 +110,17 @@ function normalizeClaudeCode(parsed: Record<string, unknown>): NormalizedConfig 
   const projects = parsed["projects"];
   if (projects !== null && typeof projects === "object" && !Array.isArray(projects)) {
     for (const [path, body] of Object.entries(projects as Record<string, unknown>)) {
-      if (body === null || typeof body !== "object") continue;
-      const group = (body as Record<string, unknown>)["mcpServers"];
-      if (group === null || typeof group !== "object" || Array.isArray(group)) continue;
+      const group =
+        body !== null && typeof body === "object"
+          ? (body as Record<string, unknown>)["mcpServers"]
+          : null;
+      if (group === null || typeof group !== "object" || Array.isArray(group)) {
+        // Never a silent drop: the skip is surfaced as a warning (path only).
+        warnings.push(
+          redactString(`projects[${JSON.stringify(path)}].mcpServers is not an object; skipped`),
+        );
+        continue;
+      }
       // Pointer base quotes the project path — it is a file path, not a secret.
       servers.push(
         ...normalizeMcpServersObject(
@@ -118,8 +130,8 @@ function normalizeClaudeCode(parsed: Record<string, unknown>): NormalizedConfig 
       );
     }
   }
-  if (servers.length === 0) return null;
-  return { servers };
+  if (servers.length === 0 && warnings.length === 0) return null;
+  return { config: { servers }, warnings };
 }
 
 /** Native scanner format: `{"servers": [{name, …}]}` (fixtures/back-compat). */
@@ -171,11 +183,17 @@ export function detectFormat(parsed: unknown): ClientFormat {
   }
   const keys = Object.keys(parsed as Record<string, unknown>);
   const p = parsed as Record<string, unknown>;
+  // ~/.claude.json mixes top-level mcpServers AND projects[].mcpServers — the
+  // claude-code normalizer handles both; detecting it first avoids a silent
+  // partial audit of project-scoped servers (A1 red-team Medium 1).
+  const projects = p["projects"];
+  if (projects !== null && typeof projects === "object" && !Array.isArray(projects)) {
+    return "claude-code";
+  }
   if (keys.includes("mcpServers")) return "mcp-servers";
   if (keys.includes("servers")) {
     return Array.isArray(p["servers"]) ? "native" : "vscode";
   }
-  if (keys.includes("projects")) return "claude-code";
   throw new FormatError(
     "unsupported shape: expected one of mcpServers{…} (Claude Desktop/Code, Cursor, Windsurf), " +
       "servers{…} (VS Code), servers[…] (native), or a Claude Code ~/.claude.json (projects{…})",
@@ -189,7 +207,7 @@ export function detectFormat(parsed: unknown): ClientFormat {
 export function normalizeFile(
   parsed: unknown,
   client?: ClientFormat,
-): { config: NormalizedConfig; format: ClientFormat } {
+): { config: NormalizedConfig; format: ClientFormat; warnings: string[] } {
   if (client !== undefined && !CLIENT_FORMATS.includes(client)) {
     throw new FormatError(
       `unsupported --client ${client}; supported: ${CLIENT_FORMATS.join(", ")}`,
@@ -201,6 +219,7 @@ export function normalizeFile(
   const p = parsed as Record<string, unknown>;
   const format = client ?? detectFormat(p);
   let config: NormalizedConfig | null = null;
+  let warnings: string[] = [];
   switch (format) {
     case "mcp-servers":
     case "claude-desktop":
@@ -215,9 +234,14 @@ export function normalizeFile(
       };
       break;
     }
-    case "claude-code":
-      config = normalizeClaudeCode(p);
+    case "claude-code": {
+      const cc = normalizeClaudeCode(p);
+      if (cc) {
+        config = cc.config;
+        warnings = cc.warnings;
+      }
       break;
+    }
     case "vscode":
       config = normalizeVscode(p);
       break;
@@ -225,10 +249,10 @@ export function normalizeFile(
       config = normalizeNative(p);
       break;
   }
-  if (!config || config.servers.length === 0) {
+  if (!config || (config.servers.length === 0 && warnings.length === 0)) {
     throw new FormatError(
       `no MCP server entries found for format ${format} (mcpServers/servers empty or missing)`,
     );
   }
-  return { config, format };
+  return { config, format, warnings };
 }

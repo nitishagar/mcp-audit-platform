@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { detectFormat, FormatError, normalizeFile } from "../src/adapters/index.js";
 import { auditConfig, loadConfigAny } from "../src/runner.js";
+import { emitJson, emitSummary } from "../src/emit.js";
 
 const claude = {
   mcpServers: {
@@ -30,7 +31,7 @@ describe("format detection (A1)", () => {
     expect(detectFormat(claude)).toBe("mcp-servers");
     expect(detectFormat(vscode)).toBe("vscode");
     expect(detectFormat({ servers: [{ name: "x" }] })).toBe("native");
-    expect(detectFormat(claudeCode)).toBe("mcp-servers"); // mcpServers wins; projects handled by claude-code path
+    expect(detectFormat(claudeCode)).toBe("claude-code"); // projects{} wins: claude-code path audits BOTH scopes
   });
 
   it("rejects unknown shapes with a supported list", () => {
@@ -119,3 +120,52 @@ describe("loadConfigAny (A1)", () => {
     if ("error" in bad) expect(bad.error.message).toContain("mcpServers");
   });
 });
+
+describe("A1 red-team fixes", () => {
+  it("mixed ~/.claude.json auto-detect audits BOTH top-level and project scopes", () => {
+    const loaded = loadConfigAny(claudeCodeTmp(), 2 * 1024 * 1024);
+    if (!("loaded" in loaded)) throw new Error("load failed");
+    const bases = loaded.loaded.pointerBases;
+    expect(bases.some((b) => b.startsWith("projects["))).toBe(true);
+    expect(bases).toContain("mcpServers.globalfs");
+  });
+
+  it("pointer bases pass through redactString (secret-shaped key names scrubbed)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cc-red-"));
+    const path = join(dir, "config.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        mcpServers: { "sk-proxy-token-abcdef12": { command: "npx", args: ["pkg"] } },
+      }),
+    );
+    const loaded = loadConfigAny(path, 2 * 1024 * 1024);
+    if (!("loaded" in loaded)) throw new Error("load failed");
+    const result = auditConfig(loaded.loaded.config, "test", loaded.loaded.pointerBases);
+    const surfaces = [emitJson(result), emitSummary(result)].join("\n");
+    expect(surfaces).not.toContain("sk-proxy-token-abcdef12");
+    expect(surfaces).toContain("[REDACTED:pattern]");
+  });
+
+  it("malformed Claude Code project groups surface as warnings, never a silent drop", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cc-warn-"));
+    const path = join(dir, "config.json");
+    writeFileSync(path, JSON.stringify({ projects: { "/x": { mcpServers: "junk" } } }));
+    const loaded = loadConfigAny(path, 2 * 1024 * 1024);
+    if (!("loaded" in loaded)) throw new Error("load failed");
+    expect(loaded.loaded.adapterWarnings.join(" ")).toContain("skipped");
+  });
+});
+
+function claudeCodeTmp(): string {
+  const fs = mkdtempSync(join(tmpdir(), "cc-"));
+  const path = join(fs, ".claude.json");
+  writeFileSync(
+    path,
+    JSON.stringify({
+      mcpServers: { globalfs: { url: "https://api.example.com/mcp" } },
+      projects: { "/home/dev/app": { mcpServers: { fs: { command: "npx", args: ["pkg"] } } } },
+    }),
+  );
+  return path;
+}

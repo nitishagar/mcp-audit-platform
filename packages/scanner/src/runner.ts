@@ -111,6 +111,8 @@ export interface LoadedAudit {
   config: NormalizedConfig;
   pointerBases: string[];
   format: ClientFormat;
+  /** Adapter-level warnings (e.g. skipped malformed Claude Code projects). */
+  adapterWarnings: string[];
 }
 
 /**
@@ -125,12 +127,13 @@ export function loadConfigAny(
   const file = readJsonFile(path, maxBytes);
   if ("error" in file) return file;
   try {
-    const { config, format } = normalizeFile(file.parsed, client);
+    const { config, format, warnings } = normalizeFile(file.parsed, client);
     return {
       loaded: {
         config,
         format,
         pointerBases: config.servers.map((s) => s._pointerBase),
+        adapterWarnings: warnings,
       },
     };
   } catch (err) {
@@ -230,6 +233,7 @@ export function auditConfig(
   config: McpConfig,
   toolVersion: string,
   pointerBases?: string[],
+  adapterWarnings?: string[],
 ): AuditResult {
   const malformed = firstMalformedServerIndex(config);
   if (malformed >= 0) {
@@ -264,7 +268,9 @@ export function auditConfig(
             check.id,
             r.status,
             resolved.severity,
-            redactString(r.pointer),
+            // A1 red-team Medium 2: translate to the original-file location
+            // BEFORE redaction so attacker-named pointer bases are scrubbed.
+            redactString(translatePointer(r.pointer, pointerBases)),
             redactString(r.detail),
             [`${FRAMEWORK}: ${resolved.category}`, ...resolved.cveRefs],
             resolved.unmapped,
@@ -273,9 +279,6 @@ export function auditConfig(
             r.status === "unassessable" ? (r.scope ?? "coverage") : undefined,
           ),
         );
-        // A1: findings keep pointing at the ORIGINAL file location — rewrite
-        // the servers[i] prefix to the adapter-recorded pointer base.
-        for (const f of findings) f.pointer = translatePointer(f.pointer, pointerBases);
         // Canonical order: sort by (checkId, pointer).
         findings.sort((a, b) => a.pointer.localeCompare(b.pointer));
         return {
@@ -319,7 +322,7 @@ export function auditConfig(
     idScheme: ID_SCHEME,
     schemaVersion: SCHEMA_VERSION,
     checks,
-    warnings: folded.warnings,
+    warnings: [...folded.warnings, ...(adapterWarnings ?? [])],
   };
 }
 

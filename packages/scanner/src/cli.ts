@@ -144,7 +144,12 @@ export function main(argv: string[]): number {
   const result =
     "error" in loaded
       ? gateFailureResult(loaded.error.message, VERSION)
-      : auditConfig(loaded.loaded.config, VERSION, loaded.loaded.pointerBases);
+      : auditConfig(
+          loaded.loaded.config,
+          VERSION,
+          loaded.loaded.pointerBases,
+          loaded.loaded.adapterWarnings,
+        );
   if ("error" in loaded) {
     console.error(`mcp-audit: ${loaded.error.message}`);
   }
