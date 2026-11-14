@@ -69,6 +69,21 @@ describe("CLI exit codes", () => {
     expect(code).toBe(2);
   });
 
+  it("no-tools fixture → 0 (coverage gaps do not fail; A0)", () => {
+    silence();
+    expect(main(["scan", fixture("no-tools.json"), "--format", "json"])).toBe(0);
+  });
+
+  it("no-tools fixture with --strict → 2 (coverage treated as failure)", () => {
+    silence();
+    expect(main(["scan", fixture("no-tools.json"), "--format", "json", "--strict"])).toBe(2);
+  });
+
+  it("clean fixture with --strict → 0 (no coverage gaps on a full native config)", () => {
+    silence();
+    expect(main(["scan", fixture("clean.json"), "--format", "json", "--strict"])).toBe(0);
+  });
+
   it("oversize input → 2 at CLI level", () => {
     silence();
     const code = main(["scan", fixture("clean.json"), "--format", "json", "--max-bytes", "10"]);

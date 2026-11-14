@@ -24,12 +24,16 @@ export const HELP = `mcp-audit ${VERSION} — static MCP / AI agent config audit
 Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
+    [--strict]
 
 Formats: a single format writes to stdout; "all" writes audit.json,
 audit.sarif and summary.md into --out-dir (default ./audit-out).
 
-Exit codes: 0 clean · 1 findings at/above --fail-on (default critical) ·
-2 unassessable input or write error (takes precedence over 1).
+Exit codes: 0 clean (coverage gaps allowed) · 1 findings at/above
+--fail-on (default critical) · 2 input-unassessable (unreadable input,
+malformed server entry, or a check error) or a write error. Checks whose
+subject cannot be determined from this input type are reported as "not
+determinable" with no exit effect; pass --strict to treat those as 2.
 
 Static analysis only — not a penetration test. It never probes live
 systems or runs attacks.`;
@@ -39,6 +43,7 @@ interface Options {
   outDir: string;
   failOn: Severity;
   maxBytes: number;
+  strict: boolean;
 }
 
 function parseArgs(argv: string[]): { configPath: string; options: Options } {
@@ -47,6 +52,7 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     outDir: "./audit-out",
     failOn: "critical",
     maxBytes: DEFAULT_MAX_BYTES,
+    strict: false,
   };
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
@@ -59,6 +65,7 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     else if (arg === "--out-dir") options.outDir = argv[++i] ?? options.outDir;
     else if (arg === "--fail-on") options.failOn = (argv[++i] ?? "") as Severity;
     else if (arg === "--max-bytes") options.maxBytes = Number(argv[++i] ?? Number.NaN);
+    else if (arg === "--strict") options.strict = true;
     else if (arg.startsWith("--")) {
       console.error(`unknown flag: ${arg}\n${HELP}`);
       process.exit(2);
@@ -83,11 +90,17 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
   return { configPath: positional[1], options };
 }
 
-function exitCode(result: AuditResult, failOn: Severity): number {
-  const fails = result.checks.flatMap((c) => c.findings);
-  // Total order: any unassessable → 2; else ≥ threshold → 1; else 0.
-  if (fails.some((f) => f.status === "unassessable")) return 2;
-  if (fails.some((f) => SEVERITY_RANK[f.severity] >= SEVERITY_RANK[failOn])) return 1;
+function exitCode(result: AuditResult, failOn: Severity, strict: boolean): number {
+  const findings = result.checks.flatMap((c) => c.findings);
+  // Total order (A0): input-unassessable → 2; findings ≥ threshold → 1;
+  // coverage-unassessable has no effect (--strict opts into 2); else 0.
+  if (result.checks.some((c) => c.status === "unassessable" && c.scope === "input")) return 2;
+  if (
+    findings.some((f) => f.status === "fail" && SEVERITY_RANK[f.severity] >= SEVERITY_RANK[failOn])
+  )
+    return 1;
+  if (strict && result.checks.some((c) => c.status === "unassessable" && c.scope === "coverage"))
+    return 2;
   return 0;
 }
 
@@ -138,7 +151,7 @@ export function main(argv: string[]): number {
   } else {
     process.stdout.write(emit(result, options.format, redactString(configPath)));
   }
-  return exitCode(result, options.failOn);
+  return exitCode(result, options.failOn, options.strict);
 }
 
 // Only run when executed directly (importable for tests without side effects).

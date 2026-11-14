@@ -3,7 +3,18 @@ import { createHash } from "node:crypto";
 export const ID_SCHEME = "v1" as const;
 
 export type Severity = "critical" | "high" | "medium" | "low";
-export type CheckStatus = "pass" | "fail" | "unassessable";
+export type CheckStatus = "pass" | "fail" | "unassessable" | "not_applicable";
+/**
+ * Why a check is unassessable (spec amendment, PLAN-PRODUCT-COMPLETE §1):
+ * - "input": the input itself could not be read/understood (gate failure,
+ *   malformed server entry, or the check threw). Exit-code effect (2).
+ * - "coverage": the property cannot be determined from this input type.
+ *   Reported, never pass (I1), no exit-code effect (--strict opts into 2).
+ */
+export type UnassessableScope = "input" | "coverage";
+
+/** Result schema version. Bumped when status/output semantics change; ids are v1. */
+export const SCHEMA_VERSION = "2.0" as const;
 
 export const SEVERITY_RANK: Record<Severity, number> = {
   low: 0,
@@ -17,7 +28,7 @@ export interface Finding {
   /** Stable id: sha1(checkId|pointer|normalizedDetail)[0:12], non-security use. */
   id: string;
   checkId: string;
-  status: Exclude<CheckStatus, "pass">;
+  status: Exclude<CheckStatus, "pass" | "not_applicable">;
   severity: Severity;
   /** JSON-pointer-ish location, e.g. servers[0].auth. Never contains values. */
   pointer: string;
@@ -25,11 +36,15 @@ export interface Finding {
   detail: string;
   frameworkRefs: string[];
   unmapped?: boolean;
+  /** Present on unassessable findings: why we could not assess. */
+  scope?: UnassessableScope;
 }
 
 export interface CheckResult {
   checkId: string;
   status: CheckStatus;
+  /** Present when status is "unassessable": why (see UnassessableScope). */
+  scope?: UnassessableScope;
   findings: Finding[];
 }
 
@@ -70,12 +85,13 @@ export function stableFindingId(checkId: string, pointer: string, detail: string
 
 export function makeFinding(
   checkId: string,
-  status: Exclude<CheckStatus, "pass">,
+  status: Exclude<CheckStatus, "pass" | "not_applicable">,
   severity: Severity,
   pointer: string,
   detail: string,
   frameworkRefs: string[],
   unmapped = false,
+  scope?: UnassessableScope,
 ): Finding {
   return {
     id: stableFindingId(checkId, pointer, detail),
@@ -86,5 +102,6 @@ export function makeFinding(
     detail,
     frameworkRefs,
     ...(unmapped ? { unmapped: true as const } : {}),
+    ...(scope ? { scope } : {}),
   };
 }

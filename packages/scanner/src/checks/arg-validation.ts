@@ -21,6 +21,7 @@ function paramCount(tool: { params?: unknown }): number {
 /** ARG-01: tools with excessive parameters (validation surface + token bloat). */
 export const paramCountCheck: Check = {
   id: "ARG-01",
+  requires: ["tools"],
   description: "Tools declare at most 8 parameters",
   run: (config) => {
     const out: RawFinding[] = [];
@@ -46,6 +47,7 @@ export const paramCountCheck: Check = {
 /** ARG-02: tool descriptions containing poisoning/injection signals. */
 export const descriptionPoisoningCheck: Check = {
   id: "ARG-02",
+  requires: ["tools"],
   description: "Tool descriptions contain no poisoning signals",
   run: (config) => {
     const out: RawFinding[] = [];

@@ -9,7 +9,17 @@ function allFailFindings(result: AuditResult) {
 }
 
 function allUnassessable(result: AuditResult) {
-  return result.checks.flatMap((c) => c.findings.filter((f) => f.status === "unassessable"));
+  return result.checks
+    .filter((c) => c.status === "unassessable")
+    .flatMap((c) => c.findings.map((f) => ({ finding: f, scope: c.scope ?? f.scope })));
+}
+
+function allNotApplicable(result: AuditResult) {
+  return result.checks.filter((c) => c.status === "not_applicable");
+}
+
+function countByScope(result: AuditResult, scope: "input" | "coverage") {
+  return result.checks.filter((c) => c.status === "unassessable" && c.scope === scope).length;
 }
 
 /** Canonical JSON: key order fixed by construction, findings pre-sorted. */
@@ -58,7 +68,8 @@ export function emitSarif(result: AuditResult, sourcePath?: string): string {
     })),
     // Unassessable checks are reported, never dropped (I1). Level "note":
     // GitHub documents only error/warning/note and surfaces "none" as open alerts.
-    ...allUnassessable(result).map((f) => ({
+    // not_applicable checks emit no result by design.
+    ...allUnassessable(result).map(({ finding: f, scope }) => ({
       ruleId: f.checkId,
       level: "note",
       message: { text: `[${f.id}] UNASSESSABLE: ${f.detail}` },
@@ -67,6 +78,7 @@ export function emitSarif(result: AuditResult, sourcePath?: string): string {
       properties: {
         severity: f.severity,
         status: "unassessable",
+        ...(scope ? { scope } : {}),
         pointer: f.pointer,
         frameworkRefs: f.frameworkRefs,
       },
@@ -90,14 +102,16 @@ export function emitSummary(result: AuditResult): string {
   const fails = allFailFindings(result).sort(
     (a, b) => SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] || a.id.localeCompare(b.id),
   );
-  const unass = allUnassessable(result);
+  const inputUnass = allUnassessable(result).filter((x) => x.scope === "input");
+  const coverageUnass = allUnassessable(result).filter((x) => x.scope === "coverage");
+  const notApplicable = allNotApplicable(result);
   const passed = result.checks.filter((c) => c.status === "pass").length;
   const lines = [
     `# mcp-audit summary`,
     ``,
     `Tool: ${result.tool} ${result.toolVersion} · Framework: ${result.framework}`,
     ``,
-    `Checks: ${passed} passed, ${fails.length} finding(s), ${unass.length} unassessable.`,
+    `Checks: ${passed} passed, ${fails.length} finding(s), ${inputUnass.length} input-unassessable, ${coverageUnass.length} not determinable, ${notApplicable.length} not applicable.`,
     ``,
   ];
   if (fails.length > 0) {
@@ -109,9 +123,16 @@ export function emitSummary(result: AuditResult): string {
     }
     lines.push(``);
   }
-  if (unass.length > 0) {
-    lines.push(`## Unassessable`, ``);
-    for (const f of unass) {
+  if (inputUnass.length > 0) {
+    lines.push(`## Unassessable (input errors)`, ``);
+    for (const { finding: f } of inputUnass) {
+      lines.push(`- **${f.checkId}** (${f.id}) at \`${f.pointer}\`: ${f.detail}`);
+    }
+    lines.push(``);
+  }
+  if (coverageUnass.length > 0) {
+    lines.push(`## Not determinable from this input`, ``);
+    for (const { finding: f } of coverageUnass) {
       lines.push(`- **${f.checkId}** (${f.id}) at \`${f.pointer}\`: ${f.detail}`);
     }
     lines.push(``);

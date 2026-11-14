@@ -5,6 +5,7 @@ import { serverLabel } from "./types.js";
 export const auditLogCheck: Check = {
   id: "LOG-01",
   description: "Each server keeps an audit log of tool calls",
+  requires: ["servers"],
   run: (config) => {
     const out: { status: "fail"; pointer: string; detail: string }[] = [];
     config.servers.forEach((server, i) => {

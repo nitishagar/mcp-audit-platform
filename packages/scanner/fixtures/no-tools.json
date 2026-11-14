@@ -1,0 +1,11 @@
+{
+  "servers": [
+    {
+      "name": "local-tidy",
+      "transport": "stdio",
+      "command": "npx",
+      "version": "1.0.0",
+      "auditLog": true
+    }
+  ]
+}

@@ -44,6 +44,7 @@ function stringLeaves(serverIndex: number, node: unknown, base: string, out: Str
 /** SEC-01: real secret values stored under denylisted config keys. */
 export const envSecretsCheck: Check = {
   id: "SEC-01",
+  requires: ["servers"],
   description: "No live secrets stored under credential config keys",
   run: (config) => {
     const out: RawFinding[] = [];
@@ -69,6 +70,7 @@ export const envSecretsCheck: Check = {
 /** SEC-02: secret-shaped values anywhere in config, regardless of key name. */
 export const valuePatternCheck: Check = {
   id: "SEC-02",
+  requires: ["servers"],
   description: "No secret-shaped values anywhere in config",
   run: (config) => {
     const out: RawFinding[] = [];

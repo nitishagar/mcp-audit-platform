@@ -5,6 +5,7 @@ import { serverLabel } from "./types.js";
 export const inventoryCheck: Check = {
   id: "INV-01",
   description: "Each MCP server declares a pinned version",
+  requires: ["servers"],
   run: (config) => {
     const out: { status: "fail"; pointer: string; detail: string }[] = [];
     config.servers.forEach((server, i) => {

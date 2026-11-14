@@ -14,6 +14,7 @@ function isDestructive(name: unknown): boolean {
 export const destructiveToolsCheck: Check = {
   id: "PRIV-01",
   description: "Destructive tools require approval gating",
+  requires: ["tools"],
   run: (config) => {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {
@@ -41,6 +42,7 @@ export const destructiveToolsCheck: Check = {
 export const toolCountCheck: Check = {
   id: "PRIV-02",
   description: "Servers expose at most 20 tools (least privilege)",
+  requires: ["tools"],
   run: (config) => {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {
