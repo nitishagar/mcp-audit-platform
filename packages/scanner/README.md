@@ -70,9 +70,9 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 
 | Check | Consensus category | Severity |
 |---|---|---|
-| INV-01 pinned version | MCP04 Software Supply Chain | medium |
-| AUTH-01 remote auth required | MCP07 Insufficient Authentication | critical |
-| AUTH-02 localhost-only bind | MCP07 Insufficient Authentication | high |
+| INV-01 pinned version | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
+| AUTH-01 remote auth required | MCP07 Insufficient Authentication & Authorization | critical |
+| AUTH-02 localhost-only bind | MCP07 Insufficient Authentication & Authorization | high |
 | AUTH-03 Origin validation | MCP07 Insufficient Authentication | high |
 | PRIV-01 destructive-tool approval | MCP02 Privilege Escalation via Scope Creep | high |
 | PRIV-02 ≤20 tools | MCP02 Privilege Escalation via Scope Creep | medium |
@@ -83,3 +83,7 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 | LOG-01 audit log present | MCP08 Lack of Audit and Telemetry | medium |
 
 Severity mapping: `src/severity-map.ts`, pinned to OWASP MCP Top 10 v2025-beta.
+
+Official categories not covered by static config analysis in v1: MCP06 Intent
+Flow Subversion, MCP09 Shadow MCP Servers, MCP10 Context Injection &
+Over-Sharing — these concern runtime context/intent behavior.
