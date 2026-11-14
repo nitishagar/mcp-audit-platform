@@ -1,9 +1,11 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { emitJson, emitSummary } from "../src/emit.js";
 import { main } from "../src/cli.js";
+import { parseToolsFile } from "../src/adapters/tools.js";
 import { auditConfig, loadConfigAny } from "../src/runner.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -197,5 +199,57 @@ describe("mule oracle with --tools (A3a)", () => {
     // read_file (now non-read-only/destructive) + exec_command join the fails
     const failing = priv01?.findings.filter((f) => f.status === "fail") ?? [];
     expect(failing.length).toBe(5);
+  });
+});
+
+describe("--tools CLI wiring (A3a red-team)", () => {
+  const silence2 = () => {
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+  };
+  const writeJson = (name: string, body: unknown): string => {
+    const path = join(tmpdir(), `tools-${name}`);
+    writeFileSync(path, JSON.stringify(body));
+    return path;
+  };
+
+  it("zero-match tools map warns and tool checks stay coverage", () => {
+    silence2();
+    const cfg = writeJson("cfg.json", {
+      mcpServers: { srvb: { command: "npx", args: ["p@1.0.0"] } },
+    });
+    const tools = writeJson("tools-zero.json", {
+      srvA: { tools: [{ name: "t", inputSchema: {} }] },
+    });
+    const code = main(["scan", cfg, "--format", "json", "--tools", tools]);
+    expect(code).toBe(0);
+  });
+
+  it("--tools without a value exits 2", () => {
+    silence2();
+    const cfg = writeJson("cfg2.json", {
+      mcpServers: { a: { command: "npx", args: ["p@1.0.0"] } },
+    });
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((n) => {
+      throw new Error(`exit ${String(n)}`);
+    });
+    try {
+      expect(() => main(["scan", cfg, "--format", "json", "--tools"])).toThrow("exit 2");
+      expect(exitSpy).toHaveBeenCalledWith(2);
+    } finally {
+      exitSpy.mockRestore();
+    }
+  });
+
+  it("parseToolsFile: __proto__ key is an own property on a null-proto map, no pollution", () => {
+    // Built via JSON.parse: an object literal would SET the prototype instead.
+    const f = parseToolsFile(
+      JSON.parse('{"__proto__": {"tools": [{"name": "t"}]}, "real": {"tools": []}}'),
+    );
+    if (!("byServer" in f)) throw new Error("expected byServer shape");
+    expect(Object.getPrototypeOf(f.byServer)).toBeNull();
+    expect(Object.prototype.hasOwnProperty.call(f.byServer, "__proto__")).toBe(true);
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 });
