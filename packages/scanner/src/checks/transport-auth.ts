@@ -93,7 +93,7 @@ export const localhostBindingCheck: Check = {
       const bind = server.bind;
       const url = server.url;
       const bindsAll =
-        bind === "0.0.0.0" || (typeof url === "string" && /https?:\/\/0\.0\.0\.0/.test(url));
+        bind === "0.0.0.0" || (typeof url === "string" && /https?:\/\/0\.0\.0\.0/i.test(url));
       if (bindsAll) {
         out.push({
           status: "fail",

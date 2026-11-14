@@ -44,8 +44,13 @@ describe("INV-01 derives pinning from the launch command (A2)", () => {
     },
     {
       name: "docker digest",
-      server: { command: "docker", args: ["run", "img@sha256:abc"] },
+      server: { command: "docker", args: ["run", `img@sha256:${"a".repeat(64)}`] },
       want: "pass",
+    },
+    {
+      name: "docker bogus short digest is not a pin",
+      server: { command: "docker", args: ["run", "img@sha256:abc"] },
+      want: "fail",
     },
     {
       name: "docker untagged",
@@ -56,6 +61,87 @@ describe("INV-01 derives pinning from the launch command (A2)", () => {
     {
       name: "native version wins",
       server: { command: "npx", args: ["pkg"], version: "9.9.9" },
+      want: "pass",
+    },
+    // red-team round 1: ranges / wildcards / dist-tags are NOT pins
+    {
+      name: "npm range is not a pin",
+      server: { command: "npx", args: ["pkg@^1.0.0"] },
+      want: "fail",
+    },
+    { name: "npm 1.x is not a pin", server: { command: "npx", args: ["pkg@1.x"] }, want: "fail" },
+    {
+      name: "npm wildcard is not a pin",
+      server: { command: "npx", args: ["pkg@*"] },
+      want: "fail",
+    },
+    {
+      name: "dist-tag beta is not a pin",
+      server: { command: "npx", args: ["pkg@beta"] },
+      want: "fail",
+    },
+    // red-team round 2: repeatable -p/--package — EVERY occurrence must pin
+    {
+      name: "second -p unpinned",
+      server: {
+        command: "npx",
+        args: ["-p", "pkg@1.2.3", "-p", "mcp-server-evil", "mcp-server-evil"],
+      },
+      want: "fail",
+    },
+    {
+      name: "mixed -p forms, second unpinned",
+      server: {
+        command: "npx",
+        args: ["--package=pkg@1.2.3", "--package", "mcp-server-evil", "cmd"],
+      },
+      want: "fail",
+    },
+    // red-team round 1: value-flag decode + all-flags coverage
+    {
+      name: "npx --package= unpinned",
+      server: { command: "npx", args: ["--package=mcp-server-x"] },
+      want: "fail",
+    },
+    {
+      name: "npx -y -p pinned with positional command",
+      server: { command: "npx", args: ["-y", "-p", "pkg@1.2.3", "cmd"] },
+      want: "pass",
+    },
+    {
+      name: "uvx --from pinned",
+      server: { command: "uvx", args: ["--from", "pkg==1.0", "srv"] },
+      want: "pass",
+    },
+    {
+      name: "all-flags launch is coverage",
+      server: { command: "npx", args: ["--yes", "--quiet"] },
+      want: "unassessable",
+    },
+    // red-team rounds 1+2: docker image decoding
+    {
+      name: "docker movable tag",
+      server: { command: "docker", args: ["run", "img:nightly"] },
+      want: "fail",
+    },
+    {
+      name: "docker -p value is not the image",
+      server: { command: "docker", args: ["run", "-p", "8080:80", "mcp/server"] },
+      want: "fail",
+    },
+    {
+      name: "docker unlisted value flag is coverage",
+      server: { command: "docker", args: ["run", "--add-host", "db:10.0.0.1", "mcp/server"] },
+      want: "unassessable",
+    },
+    {
+      name: "docker compose is coverage",
+      server: { command: "docker", args: ["compose", "up"] },
+      want: "unassessable",
+    },
+    {
+      name: "pipx run pinned",
+      server: { command: "pipx", args: ["run", "pkg==1.0"] },
       want: "pass",
     },
   ];

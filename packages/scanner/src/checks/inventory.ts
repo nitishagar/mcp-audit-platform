@@ -11,6 +11,23 @@ const LAUNCHERS = new Set(["npx", "pnpm", "bunx", "uvx", "pipx", "docker"]);
 
 /** Flags whose NEXT arg is a value (not the package/image). */
 const LAUNCHER_VALUE_FLAGS = new Set(["-p", "--package", "--from", "--python", "--py"]);
+/** Flags that never consume a following value (docker run booleans). */
+const DOCKER_BOOLEAN_FLAGS = new Set([
+  "-i",
+  "--interactive",
+  "-t",
+  "--tty",
+  "-it",
+  "--rm",
+  "--privileged",
+  "--init",
+  "-d",
+  "--detach",
+  "--read-only",
+  "--sig-proxy",
+  "--oom-kill-disable",
+]);
+
 const DOCKER_VALUE_FLAGS = new Set([
   "-p",
   "--publish",
@@ -53,7 +70,7 @@ function pyPinned(ref: string): boolean {
 /** docker pin = digest, or an exact numeric tag; movable tags are not pins. */
 function dockerPinned(ref: string): boolean {
   const at = ref.lastIndexOf("@");
-  if (at > 0) return true; // digest pin
+  if (at > 0 && /^[A-Za-z0-9_+.\-]+:[0-9a-fA-F]{32,}$/.test(ref.slice(at + 1))) return true; // digest pin
   const slash = ref.lastIndexOf("/");
   const colon = ref.lastIndexOf(":");
   if (colon <= slash) return false; // no tag
@@ -77,32 +94,52 @@ type RefScan =
  * never confuses "pinned" with "no decodable ref" (red-team round 1).
  */
 function scanLauncherArgs(args: string[], py: boolean): RefScan {
+  // -p/--package/--from are REPEATABLE (npm installs every one and runs the
+  // last): every occurrence must be pinned, or the launch is unpinned
+  // (red-team round 2, M1 path A).
+  let sawRef = false;
+  let sawPackageFlag = false;
+  const firstUnpinned: { hit: { index: number; ref: string } | null } = { hit: null };
+  const verdict = (ref: string, index: number): "pinned" | "unpinned" => {
+    const pinned = py ? pyPinned(ref) : npmPinned(ref);
+    if (!pinned && firstUnpinned.hit === null) firstUnpinned.hit = { index, ref };
+    sawRef = true;
+    return pinned ? "pinned" : "unpinned";
+  };
   for (let j = 0; j < args.length; j++) {
     const a = args[j];
     if (a === undefined) continue;
     const eq = /^(--package|--from)=([\s\S]+)$/.exec(a);
     if (eq) {
-      const ref = eq[2] ?? "";
-      const pinned = py ? pyPinned(ref) : npmPinned(ref);
-      return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j, ref };
+      sawPackageFlag = true;
+      verdict(eq[2] ?? "", j);
+      continue;
     }
     if (LAUNCHER_VALUE_FLAGS.has(a)) {
       const next = args[j + 1];
       if (next !== undefined && !isFlag(next)) {
-        const pinned = py ? pyPinned(next) : npmPinned(next);
-        return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j + 1, ref: next };
+        sawPackageFlag = true;
+        verdict(next, j + 1);
+        j++;
+        continue;
       }
       continue;
     }
     if (isFlag(a)) continue;
-    const pinned = py ? pyPinned(a) : npmPinned(a);
-    return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j, ref: a };
+    // With a -p/--package/--from form present, the first positional is the
+    // COMMAND to run from those packages, not a package spec itself.
+    if (sawPackageFlag) break;
+    verdict(a, j);
+    break; // first positional is the package; the rest are its arguments
   }
-  return { kind: "none" };
+  if (firstUnpinned.hit !== null) {
+    return { kind: "unpinned", index: firstUnpinned.hit.index, ref: firstUnpinned.hit.ref };
+  }
+  return sawRef ? { kind: "pinned" } : { kind: "none" };
 }
 
 /** First non-flag arg after `docker run …` = the image ref (or null). */
-function dockerImage(args: string[]): ImgRef | null {
+function dockerImage(args: string[]): ImgRef | "undecodable" | null {
   let seenRun = false;
   for (let j = 0; j < args.length; j++) {
     const a = args[j];
@@ -115,6 +152,17 @@ function dockerImage(args: string[]): ImgRef | null {
     const eqFlag = eq?.[1];
     if (eqFlag !== undefined && DOCKER_VALUE_FLAGS.has(eqFlag)) continue; // equals-form value flag
     if (isFlag(a)) {
+      // An UNLISTED flag followed by a non-flag token could be a value flag
+      // whose value would be misread as the image — undecodable rather than a
+      // guessed pass (red-team round 2, M1 path B). Known booleans are safe.
+      if (
+        !DOCKER_VALUE_FLAGS.has(a) &&
+        !DOCKER_BOOLEAN_FLAGS.has(a) &&
+        args[j + 1] !== undefined &&
+        !isFlag(args[j + 1] as string)
+      ) {
+        return "undecodable";
+      }
       if (DOCKER_VALUE_FLAGS.has(a) && j + 1 < args.length) j++;
       continue;
     }
@@ -148,6 +196,15 @@ export const inventoryCheck: Check = {
       }
       if (launcher === "docker") {
         const img = dockerImage(args);
+        if (img === "undecodable") {
+          out.push({
+            status: "unassessable",
+            scope: "coverage",
+            pointer: `servers[${i}].args`,
+            detail: `${serverLabel(i, server.name)} docker launch carries an unlisted value flag; the image ref cannot be decoded reliably, review the pin manually`,
+          });
+          return;
+        }
         if (!img) {
           out.push({
             status: "unassessable",
