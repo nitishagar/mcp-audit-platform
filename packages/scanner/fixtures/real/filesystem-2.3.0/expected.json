@@ -277,7 +277,7 @@
           "ARG-03": "unassessable",
           "SUP-01": "pass"
         },
-        "exitDefault": 1,
+        "exitDefault": 0,
         "failRows": [
           "SEC-01"
         ]
@@ -301,7 +301,7 @@
           "ARG-03": "fail",
           "SUP-01": "pass"
         },
-        "exitDefault": 1,
+        "exitDefault": 0,
         "failRows": [
           "PRIV-01",
           "SEC-01"
@@ -321,6 +321,7 @@
     "2026-11-14: SEC-02 pass for claude-code.secrets.json \u2014 SEC-01 owns denylisted keys (existing split), only SEC-01 fires",
     "2026-11-14 A2: AUTH-04/PRIV-03/PRIV-04 rows added when the checks landed",
     "2026-11-14 A3a: ARG-03 rows added (aggregated low finding; fail with tools, coverage without)",
-    "2026-11-14 A5: SUP-01 rows added (server-filesystem@2.3.0 is clean per the bundled snapshot; unpinned cursor fixture is unassessable)"
+    "2026-11-14 A5: SUP-01 rows added (server-filesystem@2.3.0 is clean per the bundled snapshot; unpinned cursor fixture is unassessable)",
+    "2026-11-14 T1: claude-code.secrets.json exitDefault corrected 1->0 (only SEC-01/high fires; default floor is critical)"
   ]
 }
