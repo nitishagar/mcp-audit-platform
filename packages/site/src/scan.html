@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Scan in your browser · mcp-audit</title>
 <link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tokens.css">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'">
 </head>
 <body>
 <nav><a href="index.html">← mcp-audit</a></nav>
@@ -25,35 +26,6 @@
     <p class="muted" id="gate"></p>
   </div>
 </main>
-<script type="module">
-  import { scan, renderReport, summaryCounts } from "./scan.js";
-  const $ = (id) => document.getElementById(id);
-  let auditBlob = null;
-  let reportBlob = null;
-  const readFile = () =>
-    new Promise((resolve) => {
-      const f = $("file").files?.[0];
-      if (!f) return resolve(null);
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.readAsText(f);
-    });
-  $("scan-btn").addEventListener("click", async () => {
-    const text = (await readFile()) ?? $("input").value;
-    const { result, gateError } = scan(text ?? "");
-    $("output").hidden = false;
-    if (gateError !== null || result === null) {
-      $("gate").textContent = `Could not assess: ${gateError ?? "unknown"}`;
-      $("counts").textContent = "";
-      $("summary").textContent = "";
-      return;
-    }
-    $("gate").textContent = "";
-    $("counts").textContent = summaryCounts(result);
-    $("summary").textContent = JSON.stringify(result, null, 2);
-    auditBlob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
-    reportBlob = new Blob([renderReport(result)], { type: "text/html" });
-  });
-</script>
+<script type="module" src="scan-ui.js"></script>
 </body>
 </html>

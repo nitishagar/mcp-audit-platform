@@ -8,7 +8,12 @@
       "SARIF for code scanning"
     ],
     "price": "Free",
-    "turnaround": "Instant"
+    "turnaround": "Instant",
+    "cta": {
+      "label": "Install free",
+      "href": "#install",
+      "kind": "anchor"
+    }
   },
   {
     "name": "Snapshot",
@@ -19,7 +24,12 @@
       "30-day re-scan"
     ],
     "price": "$490",
-    "turnaround": "Same day"
+    "turnaround": "Same day",
+    "cta": {
+      "label": "Request a Snapshot review",
+      "href": "contact.html#snapshot",
+      "kind": "contact"
+    }
   },
   {
     "name": "Deep Audit",
@@ -30,6 +40,11 @@
       "2 retests within 60 days"
     ],
     "price": "$1,900",
-    "turnaround": "5 days"
+    "turnaround": "5 days",
+    "cta": {
+      "label": "Request a Deep Audit",
+      "href": "contact.html#deep-audit",
+      "kind": "contact"
+    }
   }
 ]
