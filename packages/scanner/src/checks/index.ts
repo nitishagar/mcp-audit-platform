@@ -1,4 +1,4 @@
-import { descriptionPoisoningCheck, paramCountCheck } from "./arg-validation.js";
+import { descriptionPoisoningCheck, inputSchemaCheck, paramCountCheck } from "./arg-validation.js";
 import { inventoryCheck } from "./inventory.js";
 import { auditLogCheck } from "./logging.js";
 import { envSecretsCheck, valuePatternCheck } from "./secrets.js";
@@ -29,6 +29,7 @@ export const CHECKS: Check[] = [
   containerPrivilegeCheck,
   paramCountCheck,
   descriptionPoisoningCheck,
+  inputSchemaCheck,
   envSecretsCheck,
   valuePatternCheck,
   auditLogCheck,

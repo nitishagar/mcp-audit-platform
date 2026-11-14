@@ -23,7 +23,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 0,
         "failRows": []
@@ -43,7 +44,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "fail"
         },
         "exitDefault": 0,
         "failRows": [
@@ -67,7 +69,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 0,
         "failRows": []
@@ -87,7 +90,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "fail"
         },
         "exitDefault": 0,
         "failRows": [
@@ -111,7 +115,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "fail",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 0,
         "failRows": [
@@ -133,7 +138,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "fail",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "fail"
         },
         "exitDefault": 0,
         "failRows": [
@@ -158,7 +164,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 0,
         "failRows": [
@@ -180,7 +187,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "fail"
         },
         "exitDefault": 0,
         "failRows": [
@@ -205,7 +213,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "fail"
+          "PRIV-04": "fail",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 1,
         "failRows": [
@@ -228,7 +237,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "fail"
+          "PRIV-04": "fail",
+          "ARG-03": "fail"
         },
         "exitDefault": 1,
         "failRows": [
@@ -253,7 +263,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "unassessable"
         },
         "exitDefault": 1,
         "failRows": [
@@ -275,7 +286,8 @@
           "LOG-01": "unassessable",
           "AUTH-04": "not_applicable",
           "PRIV-03": "pass",
-          "PRIV-04": "pass"
+          "PRIV-04": "pass",
+          "ARG-03": "fail"
         },
         "exitDefault": 1,
         "failRows": [
@@ -295,6 +307,7 @@
   },
   "amendments": [
     "2026-11-14: SEC-02 pass for claude-code.secrets.json \u2014 SEC-01 owns denylisted keys (existing split), only SEC-01 fires",
-    "2026-11-14 A2: AUTH-04/PRIV-03/PRIV-04 rows added when the checks landed"
+    "2026-11-14 A2: AUTH-04/PRIV-03/PRIV-04 rows added when the checks landed",
+    "2026-11-14 A3a: ARG-03 rows added (aggregated low finding; fail with tools, coverage without)"
   ]
 }

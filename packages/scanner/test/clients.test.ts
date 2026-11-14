@@ -146,3 +146,56 @@ describe("mule oracle: config-derived rows (A2 subset of expected.json)", () => 
 function statusesOf(result: ReturnType<typeof auditConfig>): Map<string, string> {
   return new Map(result.checks.map((c) => [c.checkId, c.status]));
 }
+
+describe("mule oracle with --tools (A3a)", () => {
+  const oracle = JSON.parse(readFileSync(real("expected.json"), "utf8")) as {
+    fixtures: Record<string, { withTools: { statuses: Record<string, string> } }>;
+  };
+  const withTools = (configName: string, toolsName: string) => {
+    const loaded = loadConfigAny(real(configName), 2 * 1024 * 1024);
+    if (!("loaded" in loaded)) throw new Error(configName);
+    const tools = JSON.parse(readFileSync(real(toolsName), "utf8")) as { tools: unknown };
+    for (const s of loaded.loaded.config.servers) s.tools = tools.tools as never;
+    return auditConfig(loaded.loaded.config, "test", loaded.loaded.pointerBases);
+  };
+
+  it("clean config + golden tools: oracle withTools statuses match", () => {
+    const result = withTools("claude-desktop.clean.json", "tools-list.json");
+    const want = oracle.fixtures["claude-desktop.clean.json"]?.withTools.statuses;
+    if (!want) throw new Error("oracle missing claude-desktop.clean.json");
+    for (const [id, status] of Object.entries(want)) {
+      const c = result.checks.find((x) => x.checkId === id);
+      expect(c?.status, `${id}`).toBe(status);
+    }
+    // PRIV-01 fails exactly for the vendor-annotated destructive tools.
+    const priv01 = result.checks.find((c) => c.checkId === "PRIV-01");
+    const failingTools = priv01?.findings
+      .filter((f) => f.status === "fail")
+      .map((f) => f.pointer)
+      .sort();
+    expect(failingTools).toEqual([
+      "mcpServers.filesystem.tools[11].requireApproval", // move_file
+      "mcpServers.filesystem.tools[4].requireApproval", // write_file
+      "mcpServers.filesystem.tools[6].requireApproval", // edit_file
+    ]);
+  });
+
+  it("poisoned nested description is detected with a pointer into the schema", () => {
+    const result = withTools("claude-desktop.clean.json", "tools-list.poisoned.json");
+    const arg02 = result.checks.find((c) => c.checkId === "ARG-02");
+    expect(arg02?.status).toBe("fail");
+    expect(
+      arg02?.findings.some(
+        (f) => f.pointer.includes("inputSchema") && f.pointer.includes("oldText"),
+      ),
+    ).toBe(true);
+  });
+
+  it("rugpull annotations flip PRIV-01", () => {
+    const result = withTools("claude-desktop.clean.json", "tools-list.rugpull.json");
+    const priv01 = result.checks.find((c) => c.checkId === "PRIV-01");
+    // read_file (now non-read-only/destructive) + exec_command join the fails
+    const failing = priv01?.findings.filter((f) => f.status === "fail") ?? [];
+    expect(failing.length).toBe(5);
+  });
+});
