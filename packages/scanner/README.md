@@ -73,7 +73,7 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 | INV-01 pinned version | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
 | AUTH-01 remote auth required | MCP07 Insufficient Authentication & Authorization | critical |
 | AUTH-02 localhost-only bind | MCP07 Insufficient Authentication & Authorization | high |
-| AUTH-03 Origin validation | MCP07 Insufficient Authentication | high |
+| AUTH-03 Origin validation | MCP07 Insufficient Authentication & Authorization | high |
 | PRIV-01 destructive-tool approval | MCP02 Privilege Escalation via Scope Creep | high |
 | PRIV-02 ≤20 tools | MCP02 Privilege Escalation via Scope Creep | medium |
 | ARG-01 ≤8 params | MCP05 Command Injection & Execution | medium |
