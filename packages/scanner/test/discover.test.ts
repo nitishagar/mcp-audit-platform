@@ -138,3 +138,38 @@ describe("--discover CLI (A4)", () => {
     }
   });
 });
+
+describe("--discover zero-found semantics (M-3 decision)", () => {
+  it("an empty machine (no files, no warnings) is not_applicable + exit 0", () => {
+    silence();
+    const emptyHome = mkdtempSync(join(tmpdir(), "discover-empty-"));
+    process.env["MCP_AUDIT_DISCOVER_DIR"] = emptyHome;
+    afterAll.push(() => delete process.env["MCP_AUDIT_DISCOVER_DIR"]);
+    const chunks: string[] = [];
+    vi.spyOn(process.stdout, "write").mockImplementation(((c: unknown) => {
+      chunks.push(String(c));
+      return true;
+    }) as never);
+    const code = main(["scan", "--discover", "--format", "json"]);
+    expect(code).toBe(0);
+    const parsed = JSON.parse(chunks.join("")) as {
+      checks: { status: string }[];
+      warnings: string[];
+      sources: unknown[];
+    };
+    expect(parsed.checks.every((c) => c.status === "not_applicable")).toBe(true);
+    expect(parsed.checks.length).toBeGreaterThan(0);
+    expect(parsed.warnings.join(" ")).toContain("no client configs found");
+    expect(parsed.sources).toEqual([]);
+  });
+
+  it("files present but unreadable still exit 2 (the A1 residual guard)", () => {
+    silence();
+    const base = mkdtempSync(join(tmpdir(), "discover-broken-"));
+    writeFileSync(join(base, ".claude.json"), "not json {");
+    process.env["MCP_AUDIT_DISCOVER_DIR"] = base;
+    afterAll.push(() => delete process.env["MCP_AUDIT_DISCOVER_DIR"]);
+    const code = main(["scan", "--discover", "--format", "json"]);
+    expect(code).toBe(2);
+  });
+});

@@ -32,11 +32,63 @@ jobs:
       - name: Publish to npm (trusted publishing / OIDC)
         run: npm publish --access public
         working-directory: packages/scanner
-      - name: Live npx smoke of the published package
-        run: npx --yes "mcp-audit-scanner@${GITHUB_REF_NAME#v}" --help | grep -q "static MCP"
       - name: GitHub Release with the audit schema
         run: |
           gh release create "$GITHUB_REF_NAME" packages/scanner/audit.schema.json \
             --title "$GITHUB_REF_NAME" --notes-from-tag
         env:
           GH_TOKEN: ${{ github.token }}
+
+  # M-3 (PLAN-PRODUCT-COMPLETE §9.4 T3): exercise the PUBLISHED package end to
+  # end — seeded fake HOME, --discover across two configs of the same server
+  # at different pins (INV-02 must fire), --format all artifacts present.
+  e2e-published:
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Seed a fake HOME with two drifting configs
+        run: |
+          mkdir -p "$RUNNER_TEMP/home/.cursor" "$RUNNER_TEMP/proj/.mcp.json-tmp"
+          mkdir -p "$RUNNER_TEMP/proj"
+          cat > "$RUNNER_TEMP/home/.cursor/mcp.json" <<'JSON'
+          {"mcpServers": {"filesystem": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem@2.3.0", "$RUNNER_TEMP/sandbox"]}}}
+          JSON
+          cat > "$RUNNER_TEMP/proj/.mcp.json" <<'JSON'
+          {"mcpServers": {"filesystem": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem@2.1.0", "$RUNNER_TEMP/sandbox"]}}}
+          JSON
+          rm -rf "$RUNNER_TEMP/proj/.mcp.json-tmp"
+      - name: Run the published package over --discover
+        env:
+          MCP_AUDIT_DISCOVER_DIR: ${{ runner.temp }}/home
+        run: |
+          set +e
+          npx --yes "mcp-audit-scanner@${GITHUB_REF_NAME#v}" scan --discover --format all --out-dir e2e-out
+          code=$?
+          set -e
+          echo "exit=$code" >> "$GITHUB_STEP_SUMMARY"
+          # INV-02 is medium: below the default critical floor -> 0.
+          test "$code" -eq 0
+      - name: Assert the T3 oracle (both sources, INV-02 fired, report present)
+        run: |
+          node -e '
+            const r = require("./e2e-out/audit.json");
+            const sources = r.sources ?? [];
+            if (sources.length !== 2) throw new Error(`expected 2 sources, got ${sources.length}`);
+            const inv02 = r.checks.find((c) => c.checkId === "INV-02");
+            if (!inv02 || inv02.status !== "fail") throw new Error("INV-02 did not fire on the drifting pins");
+            const fs = require("node:fs");
+            for (const f of ["audit.json", "audit.sarif", "report.html", "summary.md"]) {
+              if (!fs.existsSync(`e2e-out/${f}`)) throw new Error(`missing ${f}`);
+            }
+            const html = fs.readFileSync("e2e-out/report.html", "utf8");
+            if (!html.includes("Executive summary")) throw new Error("report.html is not the A6 pack");
+            console.log("T3 oracle OK: 2 sources, INV-02 fired, full pack rendered");
+          '
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-audit
+          path: e2e-out/

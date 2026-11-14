@@ -5,7 +5,13 @@ import { redactString } from "./redact.js";
 import { DEFAULT_MAX_BYTES, type AuditResult, type LoadError, validateShape } from "./audit.js";
 import { type McpConfig, type McpServer } from "./schema.js";
 
-export { auditConfig, gateFailureResult, dedupeTools, DEFAULT_MAX_BYTES } from "./audit.js";
+export {
+  auditConfig,
+  gateFailureResult,
+  notApplicableAll,
+  dedupeTools,
+  DEFAULT_MAX_BYTES,
+} from "./audit.js";
 export type { AuditResult, LoadError } from "./audit.js";
 
 /** Read+parse a JSON file with the F1b/F1 guards (symlinks, FIFOs, cap, no echo). */

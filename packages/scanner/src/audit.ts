@@ -288,6 +288,35 @@ export function auditConfig(
   };
 }
 
+/**
+ * A4 zero-found result (M-3): --discover on a machine where no client config
+ * exists audits nothing — every check is not_applicable and the run exits 0
+ * (a CI-friendly "nothing to audit"), never a vacuous pass. The caller
+ * decides between this (absent files, zero warnings) and gateFailureResult
+ * (files present but unreadable — still exit 2).
+ */
+export function notApplicableAll(
+  toolVersion: string,
+  warnings: string[],
+  sources: { file: string; format: string; servers: number }[] = [],
+): AuditResult {
+  const checks: CheckResult[] = CHECKS.map((check) => ({
+    checkId: check.id,
+    status: "not_applicable",
+    findings: [],
+  }));
+  return {
+    tool: "mcp-audit",
+    toolVersion,
+    framework: FRAMEWORK,
+    idScheme: ID_SCHEME,
+    schemaVersion: SCHEMA_VERSION,
+    checks,
+    warnings,
+    sources,
+  };
+}
+
 /** Gate-failure result: every check unassessable (scope "input"), zero pass (I1). */
 export function gateFailureResult(reason: string, toolVersion: string): AuditResult {
   return unassessableAll(toolVersion, reason, "config").result;
