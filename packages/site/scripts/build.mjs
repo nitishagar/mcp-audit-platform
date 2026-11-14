@@ -57,6 +57,13 @@ ${sampleRows}
 </table>
 <p class="muted">Framework: ${esc(sample.framework)} · ${fails.length} findings · exit 1</p>`;
 
+// Step 1b: rule metadata + check ids from the scanner dist (C3 single source).
+const scannerUrl = (mod) => `file://${resolve(scannerRoot, "dist", mod)}`;
+const { RULES, CHECK_IDS: checkIds } = await import(scannerUrl("rules.js")).then(async (rules) => ({
+  RULES: rules.RULES,
+  CHECK_IDS: (await import(scannerUrl("checks/index.js"))).CHECK_IDS,
+}));
+
 // Step 2: tiers + sample into template.
 const tiers = JSON.parse(readFileSync(resolve(siteRoot, "src/tiers.json"), "utf8"));
 const tierCards = tiers
@@ -87,4 +94,63 @@ writeFileSync(resolve(dist, "index.html"), html);
 for (const asset of ["tokens.css", "styles.css", "app.js"]) {
   copyFileSync(resolve(siteRoot, asset), resolve(dist, asset));
 }
-console.log(`site build: OK (${fails.length} sample findings, ${tiers.length} tiers)`);
+
+// Step 4 (C3): rule pages, docs, changelog, report sample.
+const page = (title, body) => `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(title)} · mcp-audit</title><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tokens.css"></head>
+<body><nav><a href="index.html">← mcp-audit</a></nav><main>${body}</main></body></html>
+`;
+const rulesDir = resolve(dist, "rules");
+mkdirSync(rulesDir, { recursive: true });
+writeFileSync(resolve(dist, "check-ids.json"), `${JSON.stringify(checkIds)}\n`);
+for (const id of checkIds) {
+  const meta = RULES[id];
+  if (!meta) throw new Error(`site build: rules.ts has no metadata for ${id}`);
+  writeFileSync(
+    resolve(rulesDir, `${id}.html`),
+    page(
+      `${id} — ${meta.title}`,
+      `<h1>${esc(id)} — ${esc(meta.title)}</h1>
+<p class="muted">Effort: ${esc(meta.effort)}</p>
+<h2>Why it matters</h2><p>${esc(meta.rationale)}</p>
+<h2>How to fix</h2><p>${esc(meta.remediation)}</p>
+<p class="muted">Static analysis only — not a pentest. Source of truth: scanner rules.ts.</p>`,
+    ),
+  );
+}
+const docsRows = checkIds
+  .map(
+    (id) =>
+      `<tr><td><a href="rules/${id}.html">${esc(id)}</a></td><td>${esc(RULES[id]?.title ?? "")}</td></tr>`,
+  )
+  .join("\n");
+writeFileSync(
+  resolve(dist, "docs.html"),
+  page(
+    "Docs",
+    `<h1>Docs</h1>
+<h2>Supported inputs</h2>
+<p>Claude Desktop/Code, Cursor, VS Code, Windsurf config files (auto-detected; <code>--client</code> overrides), the native <code>{"servers":[…]}</code> shape, and a tools/list snapshot via <code>--tools</code>.</p>
+<h2>Exit codes</h2>
+<p>0 clean (coverage gaps allowed) · 1 findings at/above <code>--fail-on</code> · 2 input-unassessable or write error.</p>
+<h2>Checks</h2>
+<table><thead><tr><th>Check</th><th>Title</th></tr></thead><tbody>${docsRows}</tbody></table>
+<p class="muted">Full CLI reference: <code>mcp-audit --help</code> and the scanner README on GitHub.</p>`,
+  ),
+);
+const changelog = readFileSync(resolve(siteRoot, "../../CHANGELOG.md"), "utf8");
+writeFileSync(
+  resolve(dist, "changelog.html"),
+  page("Changelog", `<h1>Changelog</h1><pre class="changelog">${esc(changelog)}</pre>`),
+);
+// Report sample: full standalone A6 report of the vulnerable fixture.
+const sampleReport = execFileSync(
+  "node",
+  [cli, "report", resolve(siteRoot, "sample.json"), "--format", "html"],
+  { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+);
+writeFileSync(resolve(dist, "report-sample.html"), sampleReport);
+console.log(
+  `site build: OK (${fails.length} sample findings, ${tiers.length} tiers, ${checkIds.length} rule pages)`,
+);

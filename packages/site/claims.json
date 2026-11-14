@@ -1,0 +1,12 @@
+{
+  "claims": [
+    {
+      "claim": "A 2026 scan of 7,973 live remote MCP servers found 40% expose tools with no auth",
+      "source": "https://arxiv.org/abs/2605.22333",
+      "exact": "We identify 7,973 live remote MCP servers, finding that 40.55% expose tools without authentication.",
+      "where": "announce bar",
+      "note": "Population = live remote servers found via FOFA/Shodan probing; local/stdio servers were not scanned. Cited as a May 2026 arXiv preprint (Zhou et al., Fudan University)."
+    }
+  ],
+  "verifyNote": "Every percentage or number in marketing copy must have a claims entry (test: claims coverage in test/copy.test.mjs)."
+}
