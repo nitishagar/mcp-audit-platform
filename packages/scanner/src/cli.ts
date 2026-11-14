@@ -16,6 +16,7 @@ import {
   loadConfigAny,
   readJsonFile,
 } from "./runner.js";
+import { discoverConfigs } from "./adapters/discover.js";
 import { parseToolsFile } from "./adapters/tools.js";
 import { CLIENT_FORMATS, type ClientFormat } from "./adapters/types.js";
 import { SEVERITY_RANK, type Severity } from "./schema.js";
@@ -29,6 +30,7 @@ Usage:
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
     [--strict] [--client claude-desktop|claude-code|cursor|vscode|windsurf|native]
     [--tools tools-list.json]  # replaces any native tools[] on matched servers
+  mcp-audit scan --discover    # audit every well-known client config in one run
 
 Formats: a single format writes to stdout; "all" writes audit.json,
 audit.sarif and summary.md into --out-dir (default ./audit-out).
@@ -54,6 +56,7 @@ interface Options {
   strict: boolean;
   client?: ClientFormat;
   toolsPath?: string;
+  discover: boolean;
 }
 
 function parseArgs(argv: string[]): { configPath: string; options: Options } {
@@ -63,6 +66,7 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     failOn: "critical",
     maxBytes: DEFAULT_MAX_BYTES,
     strict: false,
+    discover: false,
   };
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
@@ -76,6 +80,7 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     else if (arg === "--fail-on") options.failOn = (argv[++i] ?? "") as Severity;
     else if (arg === "--max-bytes") options.maxBytes = Number(argv[++i] ?? Number.NaN);
     else if (arg === "--strict") options.strict = true;
+    else if (arg === "--discover") options.discover = true;
     else if (arg === "--tools") {
       const v = argv[++i];
       if (v === undefined) {
@@ -95,7 +100,15 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
       process.exit(2);
     } else positional.push(arg);
   }
-  if (positional[0] !== "scan" || typeof positional[1] !== "string") {
+  if (positional[0] !== "scan") {
+    console.error(HELP);
+    process.exit(2);
+  }
+  if (options.discover && typeof positional[1] === "string") {
+    console.error("--discover takes no config path; it scans the well-known client configs");
+    process.exit(2);
+  }
+  if (!options.discover && typeof positional[1] !== "string") {
     console.error(HELP);
     process.exit(2);
   }
@@ -111,7 +124,9 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     console.error(`invalid --max-bytes: ${argv.join(" ")}\n${HELP}`);
     process.exit(2);
   }
-  return { configPath: positional[1], options };
+  // --discover mode has no config path; the audit runs over well-known files.
+  const configPath = options.discover ? "" : (positional[1] as string);
+  return { configPath, options };
 }
 
 function exitCode(result: AuditResult, failOn: Severity, strict: boolean): number {
@@ -149,8 +164,36 @@ function writeAll(outDir: string, result: AuditResult, sourcePath: string): void
   }
 }
 
+/** A4: audit every well-known client config in one deterministic run. */
+function runDiscover(options: Options): number {
+  const d = discoverConfigs(options.maxBytes);
+  const bases = d.config.servers.map((s) => {
+    const f = (s as { _sourceFile?: string })._sourceFile ?? "";
+    return f ? `${f}::${s._pointerBase}` : s._pointerBase;
+  });
+  const result = auditConfig(d.config, VERSION, bases, d.warnings);
+  result.sources = d.sources;
+  if (options.format === "all") {
+    try {
+      writeAll(options.outDir, result, "discovered-configs");
+    } catch (err) {
+      console.error(
+        `mcp-audit: cannot write ${options.outDir}: ${err instanceof Error ? err.message : err}`,
+      );
+      return 2;
+    }
+    console.log(emit(result, "summary"));
+  } else {
+    process.stdout.write(emit(result, options.format));
+  }
+  return exitCode(result, options.failOn, options.strict);
+}
+
 export function main(argv: string[]): number {
   const { configPath, options } = parseArgs(argv);
+  if (options.discover) {
+    return runDiscover(options);
+  }
   const loaded = loadConfigAny(configPath, options.maxBytes, options.client);
   let toolsError: string | null = null;
   if ("loaded" in loaded && options.toolsPath) {

@@ -114,6 +114,11 @@ export function emitSummary(result: AuditResult): string {
     `Checks: ${passed} passed, ${fails.length} finding(s), ${inputUnass.length} input-unassessable, ${coverageUnass.length} not determinable, ${notApplicable.length} not applicable.`,
     ``,
   ];
+  if (result.sources && result.sources.length > 0) {
+    lines.push(`## Sources`, ``);
+    for (const s of result.sources) lines.push(`- ${s.file} (${s.format}, ${s.servers} server(s))`);
+    lines.push(``);
+  }
   if (fails.length > 0) {
     lines.push(`## Findings`, ``);
     for (const f of fails) {

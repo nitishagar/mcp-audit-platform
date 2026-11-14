@@ -1,5 +1,6 @@
 import { descriptionPoisoningCheck, inputSchemaCheck, paramCountCheck } from "./arg-validation.js";
 import { inventoryCheck } from "./inventory.js";
+import { shadowDriftCheck } from "./shadow.js";
 import { auditLogCheck } from "./logging.js";
 import { envSecretsCheck, valuePatternCheck } from "./secrets.js";
 import {
@@ -19,6 +20,7 @@ import type { Check } from "./types.js";
 /** Full registry: every checkId the runner executes. */
 export const CHECKS: Check[] = [
   inventoryCheck,
+  shadowDriftCheck,
   remoteAuthCheck,
   localhostBindingCheck,
   originValidationCheck,

@@ -27,6 +27,8 @@ export interface AuditResult {
   /** Per-check outcomes, in registry order. */
   checks: CheckResult[];
   warnings: string[];
+  /** Present in --discover mode: every well-known file that contributed. */
+  sources?: { file: string; format: string; servers: number }[];
 }
 
 export interface LoadError {
