@@ -58,6 +58,31 @@ cd mcp-audit-platform && pnpm install && pnpm build
 node packages/scanner/dist/cli.js scan /path/to/your/mcp.json
 ```
 
+## Use in CI (GitHub Action)
+
+Once the npm package is published, wire the scanner into CI:
+
+```yaml
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # only needed for upload-sarif
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nitishagar/mcp-audit-platform@v1
+        with:
+          config: mcp.json
+          fail-on: high
+          upload-sarif: "true"
+```
+
+SARIF uploads to GitHub code scanning are free for public repos; private
+repos need GitHub Advanced Security. Before the first publish, run the
+scanner from source instead (clone + `pnpm build`, then
+`node packages/scanner/dist/cli.js …`).
+
 ## Report subcommand
 
 Re-render a saved audit.json (the Snapshot fulfilment path):

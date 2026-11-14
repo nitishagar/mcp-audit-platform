@@ -1,0 +1,77 @@
+name: "mcp-audit"
+description: >-
+  Run the mcp-audit scanner on your MCP client configs and optionally upload
+  the SARIF to GitHub code scanning. Static analysis only — not a pentest.
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  config:
+    description: "Path (or glob) of the MCP config file(s) to scan. Required unless discover is true."
+    required: false
+  discover:
+    description: "Scan every well-known client config found on the runner instead of a specific file."
+    default: "false"
+  tools:
+    description: "Optional tools/list snapshot file for tool-schema checks."
+    required: false
+  fail-on:
+    description: "Exit non-zero for findings at/above this severity (critical|high|medium|low)."
+    default: "critical"
+  strict:
+    description: "Treat coverage-unassessable checks as failures (exit 2)."
+    default: "false"
+  version:
+    description: "Published npm package version to run (e.g. 1.0.0). Before the first publish, use source: checkout with this repository as the action source."
+    default: "latest"
+  upload-sarif:
+    description: "Upload audit.sarif to GitHub code scanning (needs security-events: write on the CALLER job)."
+    default: "false"
+
+outputs:
+  sarif-file:
+    description: "Path of the written audit.sarif."
+    value: ${{ steps.scan.outputs.sarif-file }}
+  exit-code:
+    description: "Scanner exit code (0 clean, 1 findings >= fail-on, 2 input-unassessable)."
+    value: ${{ steps.scan.outputs.exit-code }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+    - id: scan
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        TOOLS: ${{ inputs.tools }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        STRICT: ${{ inputs.strict }}
+        VERSION: ${{ inputs.version }}
+        DISCOVER: ${{ inputs.discover }}
+      run: |
+        set -euo pipefail
+        ARGS=(scan)
+        if [ "$DISCOVER" = "true" ]; then
+          ARGS+=(--discover)
+        else
+          if [ -z "$CONFIG" ]; then
+            echo "::error::input 'config' is required (or set discover: true)"
+            exit 2
+          fi
+          ARGS+=("$CONFIG")
+        fi
+        if [ -n "$TOOLS" ]; then ARGS+=(--tools "$TOOLS"); fi
+        ARGS+=(--format sarif --fail-on "$FAIL_ON")
+        if [ "$STRICT" = "true" ]; then ARGS+=(--strict); fi
+        npx --yes "mcp-audit-scanner@${VERSION}" "${ARGS[@]}" > audit.sarif || CODE=$? || CODE=$?
+        CODE=${CODE:-0}
+        echo "sarif-file=audit.sarif" >> "$GITHUB_OUTPUT"
+        echo "exit-code=$CODE" >> "$GITHUB_OUTPUT"
+        if [ "$CODE" -eq 2 ]; then
+          echo "::error::mcp-audit could not assess the input (exit 2)"
+        fi
+        exit 0

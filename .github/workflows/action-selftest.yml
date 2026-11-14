@@ -1,0 +1,43 @@
+name: Action selftest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile && pnpm --filter mcp-audit-scanner build
+
+      # Exercise the same mechanics the composite action performs, against the
+      # local build (the npm package may not be published yet).
+      - name: Scanner exits 1 with SARIF on the vulnerable fixture
+        run: |
+          set +e
+          node packages/scanner/dist/cli.js scan packages/scanner/fixtures/vulnerable.json \
+            --format sarif --fail-on critical > selftest.sarif
+          code=$?
+          set -e
+          echo "exit=$code" >> "$GITHUB_STEP_SUMMARY"
+          test "$code" -eq 1
+          test -s selftest.sarif
+          grep -q '"2.1.0"' selftest.sarif
+
+      # On main only: prove the GitHub code-scanning path works end to end.
+      - name: Upload SARIF (main only)
+        if: github.ref == 'refs/heads/main'
+        uses: github/codeql-action/upload-sarif@9418214df1f2c4b8128c770156c409013b07d6b9 # v3
+        with:
+          sarif_file: selftest.sarif
