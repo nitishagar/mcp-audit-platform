@@ -220,7 +220,7 @@ function runReport(auditPath: string, options: Options): number {
     if (parsed.warnings.some((w) => typeof w !== "string")) return false;
     for (const c of parsed.checks) {
       if (c === null || typeof c !== "object") return false;
-      const cr = c as Record<string, unknown>;
+      const cr = c as unknown as Record<string, unknown>;
       if (typeof cr["checkId"] !== "string" || !Array.isArray(cr["findings"])) return false;
       if (!["pass", "fail", "unassessable", "not_applicable"].includes(String(cr["status"])))
         return false;
