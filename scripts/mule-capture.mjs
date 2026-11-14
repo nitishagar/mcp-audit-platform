@@ -31,12 +31,20 @@ const out = arg("out") ?? "capture.json";
 const wantBehavior = process.argv.includes("--behavior");
 const TIMEOUT_MS = 15_000;
 
-// §9.5 guard: the sandbox must be a throw-away temp dir. Refuse anything else.
+// §9.5 guard: the sandbox must be a throw-away temp dir — under os.tmpdir(),
+// or under $RUNNER_TEMP on CI runners (that is what /tmp is there). Refuse
+// anything else, including the repo checkout and real home directories.
 function assertSandboxSafe(dir) {
   if (!dir) throw new Error("--sandbox is required");
-  const tmp = path.resolve(os.tmpdir());
-  if (!(dir === tmp || dir.startsWith(tmp + path.sep))) {
-    throw new Error(`refusing: sandbox "${dir}" is not under ${tmp} (plan §9.5)`);
+  const allowedRoots = [path.resolve(os.tmpdir())];
+  if (process.env.RUNNER_TEMP) allowedRoots.push(path.resolve(process.env.RUNNER_TEMP));
+  const ok = allowedRoots.some(
+    (root) => dir === root || dir.startsWith(root + path.sep),
+  );
+  if (!ok) {
+    throw new Error(
+      `refusing: sandbox "${dir}" is not under a permitted temp root (os.tmpdir() = ${allowedRoots[0]}${allowedRoots[1] ? ` or $RUNNER_TEMP = ${allowedRoots[1]}` : ""}) — plan §9.5`,
+    );
   }
   if (!existsSync(dir) || !statSync(dir).isDirectory()) {
     throw new Error(`sandbox "${dir}" does not exist or is not a directory`);
