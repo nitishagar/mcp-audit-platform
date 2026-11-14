@@ -404,11 +404,13 @@ describe("ARG-03 aggregated schema strictness (A3a)", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.detail).toContain("schemaless");
   });
-  it("legacy-only params (no inputSchema anywhere) is not_applicable", () => {
+  it("legacy-only params (no inputSchema anywhere) is coverage-unassessable, never pass", () => {
     const out = inputSchemaCheck.run({
       servers: [{ name: "x", tools: [{ name: "legacy", params: { path: "string" } }] }],
     });
-    expect(out).toHaveLength(0);
+    expect(out).toHaveLength(1);
+    expect(out[0]?.status).toBe("unassessable");
+    expect(out[0]?.scope).toBe("coverage");
   });
 });
 

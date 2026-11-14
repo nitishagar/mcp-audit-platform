@@ -43,7 +43,7 @@ export function parseToolsFile(parsed: unknown): ToolsFile {
   if (Array.isArray(p["tools"])) {
     return { single: normalizeTools(p["tools"]) };
   }
-  const byServer: Record<string, McpTool[]> = {};
+  const byServer: Record<string, McpTool[]> = Object.create(null);
   let found = false;
   for (const [name, body] of Object.entries(p)) {
     if (

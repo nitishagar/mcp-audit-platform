@@ -142,8 +142,9 @@ export const inputSchemaCheck: Check = {
   run: (config) => {
     const out: RawFinding[] = [];
     // Legacy native tools carry `params` name→type maps that cannot express
-    // JSON-Schema constraints: ARG-03's subject does not apply to a server
-    // whose tools have no inputSchema at all (not_applicable, never pass).
+    // JSON-Schema constraints: for a server whose tools have no inputSchema
+    // at all the check is coverage-unassessable — NEVER a vacuous pass
+    // (red-team round 1 on this PR caught the empty-array version).
     const hasAnySchema = config.servers.some((server) => {
       const tools =
         server !== null && typeof server === "object" && Array.isArray(server.tools)
@@ -156,7 +157,16 @@ export const inputSchemaCheck: Check = {
           (tool as { inputSchema?: unknown }).inputSchema !== undefined,
       );
     });
-    if (!hasAnySchema) return out;
+    if (!hasAnySchema) {
+      out.push({
+        status: "unassessable",
+        scope: "coverage",
+        pointer: "servers",
+        detail:
+          "tool schemas are in the legacy params form; JSON-Schema strictness cannot be assessed from this input",
+      });
+      return out;
+    }
     config.servers.forEach((server, i) => {
       if (server === null || typeof server !== "object") return;
       const tools = Array.isArray(server.tools) ? server.tools : [];

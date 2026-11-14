@@ -28,7 +28,7 @@ Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
     [--strict] [--client claude-desktop|claude-code|cursor|vscode|windsurf|native]
-    [--tools tools-list.json]
+    [--tools tools-list.json]  # replaces any native tools[] on matched servers
 
 Formats: a single format writes to stdout; "all" writes audit.json,
 audit.sarif and summary.md into --out-dir (default ./audit-out).
@@ -76,8 +76,14 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     else if (arg === "--fail-on") options.failOn = (argv[++i] ?? "") as Severity;
     else if (arg === "--max-bytes") options.maxBytes = Number(argv[++i] ?? Number.NaN);
     else if (arg === "--strict") options.strict = true;
-    else if (arg === "--tools") options.toolsPath = argv[++i] ?? "";
-    else if (arg === "--client") {
+    else if (arg === "--tools") {
+      const v = argv[++i];
+      if (v === undefined) {
+        console.error("--tools requires a file path");
+        process.exit(2);
+      }
+      options.toolsPath = v;
+    } else if (arg === "--client") {
       const v = argv[++i] ?? "";
       if (!CLIENT_FORMATS.includes(v as ClientFormat)) {
         console.error(`unsupported --client ${v}; supported: ${CLIENT_FORMATS.join(", ")}`);
@@ -162,9 +168,20 @@ export function main(argv: string[]): number {
             (named[0] as { tools?: unknown }).tools = f.single;
           }
         } else {
+          let matched = 0;
           for (const s of loaded.loaded.config.servers) {
-            const match = f.byServer[String(s.name)];
-            if (match !== undefined) s.tools = match;
+            // Null-prototype map + Array.isArray guard: a "__proto__" key in
+            // the tools file must never reach the prototype chain (Low 3).
+            const match = (f.byServer as Record<string, unknown>)[String(s.name)];
+            if (Array.isArray(match)) {
+              s.tools = match;
+              matched++;
+            }
+          }
+          if (matched === 0) {
+            toolsError = "no server in the config matches any name in the tools map";
+          } else if (matched < loaded.loaded.config.servers.length) {
+            toolsError = `tools attached for ${matched} of ${loaded.loaded.config.servers.length} servers`;
           }
         }
       }

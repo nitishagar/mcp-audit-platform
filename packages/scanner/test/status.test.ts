@@ -62,18 +62,26 @@ describe("input-validation gate", () => {
 });
 
 describe("check statuses (I1)", () => {
-  it("clean fixture: every check passes or is not_applicable, zero findings", () => {
+  it("clean fixture: pass/not_applicable plus ARG-03 legacy coverage, zero fails", () => {
     const loaded = loadConfig(fixture("clean.json"), 2 * 1024 * 1024);
     if (!("config" in loaded)) throw new Error("clean fixture failed to load");
     const result = auditConfig(loaded.config, "test");
-    // clean.json is stdio-only: AUTH-* are not_applicable, everything else passes.
-    expect(result.checks.every((c) => c.status === "pass" || c.status === "not_applicable")).toBe(
-      true,
-    );
+    // clean.json is stdio-only (AUTH-* not_applicable) and uses legacy params,
+    // which cannot express JSON-Schema constraints: ARG-03 is coverage.
+    expect(
+      result.checks.every(
+        (c) =>
+          c.status === "pass" ||
+          c.status === "not_applicable" ||
+          (c.status === "unassessable" && c.scope === "coverage"),
+      ),
+    ).toBe(true);
     expect(
       result.checks.filter((c) => c.status === "not_applicable").map((c) => c.checkId),
     ).toEqual(["AUTH-01", "AUTH-02", "AUTH-03", "AUTH-04"]);
-    expect(result.checks.flatMap((c) => c.findings)).toHaveLength(0);
+    const findings = result.checks.flatMap((c) => c.findings);
+    expect(findings.filter((f) => f.status === "fail")).toHaveLength(0);
+    expect(findings.filter((f) => f.checkId === "ARG-03")).toHaveLength(1);
   });
 
   it("no tool schemas: tool checks are coverage-unassessable, never pass (A0/E2)", () => {

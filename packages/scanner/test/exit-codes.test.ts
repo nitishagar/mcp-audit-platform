@@ -79,9 +79,9 @@ describe("CLI exit codes", () => {
     expect(main(["scan", fixture("no-tools.json"), "--format", "json", "--strict"])).toBe(2);
   });
 
-  it("clean fixture with --strict → 0 (no coverage gaps on a full native config)", () => {
+  it("clean fixture with --strict → 2 (legacy params cannot be schema-assessed: ARG-03 coverage)", () => {
     silence();
-    expect(main(["scan", fixture("clean.json"), "--format", "json", "--strict"])).toBe(0);
+    expect(main(["scan", fixture("clean.json"), "--format", "json", "--strict"])).toBe(2);
   });
 
   it("oversize input → 2 at CLI level", () => {

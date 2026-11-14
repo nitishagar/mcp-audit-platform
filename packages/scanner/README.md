@@ -36,7 +36,8 @@ original file locations.
 `${VAR}` / `${VAR:-default}` / `${env:VAR}` / `${input:id}` are references,
 not secrets — but a `${VAR:-default}` with a literal secret default is
 scanned. Tool schemas come from a native `tools[]` or the `--tools`
-tools/list file (A3a); without them, tool checks report "not determinable".
+tools/list file, which REPLACES any native `tools[]` on the matched
+server(s); without schemas, tool checks report "not determinable".
 
 ## Install
 
