@@ -53,20 +53,6 @@
     $("summary").textContent = JSON.stringify(result, null, 2);
     auditBlob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
     reportBlob = new Blob([renderReport(result)], { type: "text/html" });
-    // Download listeners are registered ONCE (outside the scan handler); each
-    // scan replaces the pending blob so repeated scans never fire stale blobs.
-    let auditBlob = null;
-    let reportBlob = null;
-    const save = (get, name) => {
-      const blob = get();
-      if (blob === null) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = name;
-      a.click();
-    };
-    $("download-audit").addEventListener("click", () => save(() => auditBlob, "audit.json"));
-    $("download-report").addEventListener("click", () => save(() => reportBlob, "report.html"));
   });
 </script>
 </body>
