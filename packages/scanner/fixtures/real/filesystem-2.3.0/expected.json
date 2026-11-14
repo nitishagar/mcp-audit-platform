@@ -1,0 +1,262 @@
+{
+  "oracleVersion": 1,
+  "mule": "@modelcontextprotocol/server-filesystem@2.3.0",
+  "pendingOn": [
+    "A1 adapters",
+    "A2 derivations",
+    "A3a --tools"
+  ],
+  "fixtures": {
+    "claude-desktop.clean.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": []
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "PRIV-01"
+        ]
+      }
+    },
+    "windsurf.clean.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": []
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "PRIV-01"
+        ]
+      }
+    },
+    "claude-desktop.root.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "PRIV-03"
+        ]
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "PRIV-01",
+          "PRIV-03"
+        ]
+      }
+    },
+    "cursor.unpinned.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "fail",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "INV-01"
+        ]
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "fail",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 0,
+        "failRows": [
+          "PRIV-01",
+          "INV-01"
+        ]
+      }
+    },
+    "vscode.docker.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "fail",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 1,
+        "failRows": [
+          "PRIV-04",
+          "INV-01"
+        ]
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "fail",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "pass",
+          "SEC-02": "pass",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 1,
+        "failRows": [
+          "PRIV-04",
+          "INV-01"
+        ]
+      }
+    },
+    "claude-code.secrets.json": {
+      "withoutTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "unassessable",
+          "PRIV-02": "unassessable",
+          "ARG-01": "unassessable",
+          "ARG-02": "unassessable",
+          "SEC-01": "fail",
+          "SEC-02": "fail",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 1,
+        "failRows": [
+          "SEC-01",
+          "SEC-02"
+        ]
+      },
+      "withTools": {
+        "statuses": {
+          "INV-01": "pass",
+          "AUTH-01": "not_applicable",
+          "AUTH-02": "not_applicable",
+          "AUTH-03": "not_applicable",
+          "PRIV-01": "fail",
+          "PRIV-02": "pass",
+          "ARG-01": "pass",
+          "ARG-02": "pass",
+          "SEC-01": "fail",
+          "SEC-02": "fail",
+          "LOG-01": "unassessable"
+        },
+        "exitDefault": 1,
+        "failRows": [
+          "PRIV-01",
+          "SEC-01",
+          "SEC-02"
+        ]
+      }
+    }
+  },
+  "severityPins": {
+    "PRIV-03": "high",
+    "PRIV-04": "critical",
+    "INV-01": "medium",
+    "SEC-01": "high",
+    "SEC-02": "critical",
+    "PRIV-01": "high"
+  }
+}
