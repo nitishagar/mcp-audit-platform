@@ -32,6 +32,11 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
     severity: "high",
     cveRefs: ["CVE-2025-49596"],
   },
+  "INV-02": {
+    category: "MCP09 Shadow MCP Servers",
+    severity: "medium",
+    cveRefs: [],
+  },
   "AUTH-04": {
     category: "MCP07 Insufficient Authentication & Authorization",
     severity: "high",
