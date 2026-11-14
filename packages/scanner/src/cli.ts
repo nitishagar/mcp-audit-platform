@@ -7,6 +7,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type Format, emit } from "./emit.js";
+import { redactString } from "./redact.js";
 import {
   DEFAULT_MAX_BYTES,
   type AuditResult,
@@ -90,7 +91,7 @@ function exitCode(result: AuditResult, failOn: Severity): number {
   return 0;
 }
 
-function writeAll(outDir: string, result: AuditResult): void {
+function writeAll(outDir: string, result: AuditResult, sourcePath: string): void {
   const dir = resolve(outDir);
   mkdirSync(dir, { recursive: true });
   const files: [string, Format][] = [
@@ -102,7 +103,7 @@ function writeAll(outDir: string, result: AuditResult): void {
   try {
     for (const [name, format] of files) {
       const path = resolve(dir, name);
-      writeFileSync(path, emit(result, format), "utf8");
+      writeFileSync(path, emit(result, format, sourcePath), "utf8");
       written.push(path);
     }
   } catch (err) {
@@ -124,7 +125,9 @@ export function main(argv: string[]): number {
 
   if (options.format === "all") {
     try {
-      writeAll(options.outDir, result);
+      // I4: the source path lands in exported artifacts, so it gets the same
+      // redaction as every other output string.
+      writeAll(options.outDir, result, redactString(configPath));
     } catch (err) {
       console.error(
         `mcp-audit: cannot write ${options.outDir}: ${err instanceof Error ? err.message : err}`,
@@ -133,7 +136,7 @@ export function main(argv: string[]): number {
     }
     console.log(emit(result, "summary"));
   } else {
-    process.stdout.write(emit(result, options.format));
+    process.stdout.write(emit(result, options.format, redactString(configPath)));
   }
   return exitCode(result, options.failOn);
 }

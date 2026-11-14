@@ -24,6 +24,38 @@ describe("SARIF output (I5)", () => {
           r.helpUri === "https://github.com/nitishagar/mcp-audit-platform",
       ),
     ).toBe(true);
+    expect(driver.rules.every((r: { help: { text: string } }) => r.help.text.length > 0)).toBe(
+      true,
+    );
+  });
+
+  it("carries the ingestion contract on every result", () => {
+    const result = auditConfig(structuredClone(vulnerable), "0.1.0");
+    const sarif = JSON.parse(emitSarif(result, "mcp.json"));
+    const results = sarif.runs[0].results as {
+      level: string;
+      message: { text: string };
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: string };
+            region: Record<string, number>;
+          };
+        },
+      ];
+      partialFingerprints: { primaryLocationLineHash: string };
+      properties: { pointer: string };
+    }[];
+    expect(results.length).toBeGreaterThan(0);
+    for (const r of results) {
+      expect(r.level === "error" || r.level === "warning" || r.level === "note").toBe(true);
+      expect(r.message.text.length).toBeGreaterThan(0);
+      const loc = r.locations[0].physicalLocation;
+      expect(loc.artifactLocation.uri).toBe("mcp.json");
+      expect(loc.region).toEqual({ startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 });
+      expect(r.partialFingerprints.primaryLocationLineHash).toMatch(/^[0-9a-f]{12}$/);
+      expect(r.properties.pointer.length).toBeGreaterThan(0);
+    }
   });
 
   it("links every result to its rule", () => {
