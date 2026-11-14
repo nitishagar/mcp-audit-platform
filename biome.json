@@ -27,6 +27,16 @@
       "formatter": {
         "enabled": false
       }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "useQwikValidLexicalScope": "off"
+          }
+        }
+      }
     }
   ]
 }

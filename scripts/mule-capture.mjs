@@ -38,9 +38,7 @@ function assertSandboxSafe(dir) {
   if (!dir) throw new Error("--sandbox is required");
   const allowedRoots = [path.resolve(os.tmpdir())];
   if (process.env.RUNNER_TEMP) allowedRoots.push(path.resolve(process.env.RUNNER_TEMP));
-  const ok = allowedRoots.some(
-    (root) => dir === root || dir.startsWith(root + path.sep),
-  );
+  const ok = allowedRoots.some((root) => dir === root || dir.startsWith(root + path.sep));
   if (!ok) {
     throw new Error(
       `refusing: sandbox "${dir}" is not under a permitted temp root (os.tmpdir() = ${allowedRoots[0]}${allowedRoots[1] ? ` or $RUNNER_TEMP = ${allowedRoots[1]}` : ""}) — plan §9.5`,
@@ -76,10 +74,11 @@ const pending = new Map();
 const notifications = [];
 child.stdout.on("data", (chunk) => {
   buf += String(chunk);
-  let idx;
-  while ((idx = buf.indexOf("\n")) >= 0) {
+  let idx = buf.indexOf("\n");
+  while (idx >= 0) {
     const line = buf.slice(0, idx).trim();
     buf = buf.slice(idx + 1);
+    idx = buf.indexOf("\n");
     if (!line) continue;
     let msg;
     try {
