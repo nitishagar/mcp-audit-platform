@@ -3,9 +3,10 @@
   "OWASP MCP Top 10 mapped findings": "Mechanism (shipped): src/severity-map.ts pins every check to the OWASP MCP Top 10 v2025-beta category.",
   "SARIF for code scanning": "Mechanism (shipped): `--format sarif` emitter + `action.yml` upload recipe (selftest uploads on main).",
   "Technical report + 1-page exec summary": "Mechanism (shipped): `mcp-audit report --format html` / `--format all` renders the print-ready pack (emit-html.ts); Snapshot adds the operator's human review pass (D-8a).",
+  "Human triage: false positives struck, business context added": "Mechanism (operator, D-8a): the Snapshot runbook (WS-E) triages findings, strikes false positives, and adds business-language context + a reviewer note.",
   "Prioritized fix checklist": "Mechanism (shipped): HTML report checklist section ordered severity -> effort -> check (emit-html.ts).",
-  "30-day re-scan": "Mechanism (pending WS-D): order record `rescan_until` + re-upload acceptance \u2014 requires the payment backend (D-2).",
-  "Everything in Snapshot": "Mechanism (shipped report, pending operator pass): same report pack as Snapshot; the human-review step arrives with the WS-E runbook.",
+  "30-day re-scan with drift diff": "Mechanism (pending WS-D, drift shipped): order record `rescan_until` + re-upload acceptance (requires D-2); the drift comparison itself is INV-02-style diffing of two saved audits.",
+  "Everything in Snapshot": "Mechanism (operator, D-8a): the Snapshot pack plus the Deep Audit review layers below.",
   "Human-reviewed findings + remediation workshop": "Mechanism (pending WS-E): operator runbook, day-by-day plan, and workshop scheduling \u2014 after D-2/D-3.",
   "2 retests within 60 days": "Mechanism (pending WS-D): order record `retests_used`/`retest_limit`/`retest_until` enforcement \u2014 requires the payment backend (D-2)."
 }
