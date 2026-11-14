@@ -7,7 +7,7 @@ admin (or via the UI: Settings → Branches → Add rule):
 gh api -X PUT repos/nitishagar/mcp-audit-platform/branches/main/protection \
   --input - <<'JSON'
 {
-  "required_status_checks": {"strict": true, "contexts": ["verify"]},
+  "required_status_checks": {"strict": true, "contexts": ["verify", "selftest", "analyze"]},
   "enforce_admins": false,
   "required_pull_request_reviews": {"required_approving_review_count": 0},
   "restrictions": null,
