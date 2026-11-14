@@ -108,3 +108,41 @@ describe("client fixtures through the CLI path (A1)", () => {
     expect(verdicts("windsurf.clean.json")).toBe(verdicts("claude-desktop.clean.json"));
   });
 });
+
+describe("mule oracle: config-derived rows (A2 subset of expected.json)", () => {
+  const oracle = JSON.parse(readFileSync(real("expected.json"), "utf8")) as {
+    fixtures: Record<
+      string,
+      { withoutTools: { statuses: Record<string, string>; exitDefault: number } }
+    >;
+  };
+  // Checks whose verdicts derive purely from config fields — the A2 subset.
+  const CONFIG_DERIVED = [
+    "INV-01",
+    "AUTH-01",
+    "AUTH-02",
+    "AUTH-03",
+    "AUTH-04",
+    "LOG-01",
+    "PRIV-03",
+    "PRIV-04",
+    "SEC-01",
+    "SEC-02",
+  ];
+
+  for (const [name, expected] of Object.entries(oracle.fixtures)) {
+    it(`${name}: config-derived rows match the oracle`, () => {
+      const loaded = loadConfigAny(real(name), 2 * 1024 * 1024);
+      if (!("loaded" in loaded)) throw new Error(`${name} failed to load`);
+      const result = auditConfig(loaded.loaded.config, "test", loaded.loaded.pointerBases);
+      const got = statusesOf(result);
+      for (const id of CONFIG_DERIVED) {
+        expect(got.get(id), `${name} ${id}`).toBe(expected.withoutTools.statuses[id]);
+      }
+    });
+  }
+});
+
+function statusesOf(result: ReturnType<typeof auditConfig>): Map<string, string> {
+  return new Map(result.checks.map((c) => [c.checkId, c.status]));
+}

@@ -88,17 +88,20 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 
 | Check | Consensus category | Severity |
 |---|---|---|
-| INV-01 pinned version | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
-| AUTH-01 remote auth required | MCP07 Insufficient Authentication & Authorization | critical |
+| INV-01 pinned version (derived from the launch command) | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
+| AUTH-01 remote server carries client-side credentials | MCP07 Insufficient Authentication & Authorization | high |
 | AUTH-02 localhost-only bind | MCP07 Insufficient Authentication & Authorization | high |
-| AUTH-03 Origin validation | MCP07 Insufficient Authentication & Authorization | high |
-| PRIV-01 destructive-tool approval | MCP02 Privilege Escalation via Scope Creep | high |
+| AUTH-03 Origin validation (server-side; coverage gap on client configs) | MCP07 Insufficient Authentication & Authorization | high |
+| AUTH-04 remote http:// uses TLS | MCP07 Insufficient Authentication & Authorization | high |
+| PRIV-01 destructive tools gated + reviewed | MCP02 Privilege Escalation via Scope Creep | high |
 | PRIV-02 ≤20 tools | MCP02 Privilege Escalation via Scope Creep | medium |
+| PRIV-03 no filesystem-root grants | MCP02 Privilege Escalation via Scope Creep | high |
+| PRIV-04 no container-privilege escapes | MCP02 Privilege Escalation via Scope Creep | critical |
 | ARG-01 ≤8 params | MCP05 Command Injection & Execution | medium |
 | ARG-02 no poisoning signals | MCP03 Tool Poisoning | critical |
 | SEC-01 no live secrets in config | MCP01 Token Mismanagement & Secret Exposure | high |
 | SEC-02 no secret-shaped values | MCP01 Token Mismanagement & Secret Exposure | critical |
-| LOG-01 audit log present | MCP08 Lack of Audit and Telemetry | medium |
+| LOG-01 audit log present (server-side; coverage gap on client configs) | MCP08 Lack of Audit and Telemetry | medium |
 
 Severity mapping: `src/severity-map.ts`, pinned to OWASP MCP Top 10 v2025-beta.
 

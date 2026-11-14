@@ -72,7 +72,7 @@ describe("check statuses (I1)", () => {
     );
     expect(
       result.checks.filter((c) => c.status === "not_applicable").map((c) => c.checkId),
-    ).toEqual(["AUTH-01", "AUTH-02", "AUTH-03"]);
+    ).toEqual(["AUTH-01", "AUTH-02", "AUTH-03", "AUTH-04"]);
     expect(result.checks.flatMap((c) => c.findings)).toHaveLength(0);
   });
 
@@ -88,7 +88,7 @@ describe("check statuses (I1)", () => {
       expect(c?.findings.length, id).toBeGreaterThan(0);
     }
     // stdio-only: AUTH-* not_applicable (distinct from pass).
-    for (const id of ["AUTH-01", "AUTH-02", "AUTH-03"]) {
+    for (const id of ["AUTH-01", "AUTH-02", "AUTH-03", "AUTH-04"]) {
       expect(byId.get(id)?.status, id).toBe("not_applicable");
       expect(byId.get(id)?.findings, id).toHaveLength(0);
     }

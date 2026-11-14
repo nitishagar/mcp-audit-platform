@@ -190,8 +190,18 @@ button[data-copy]:hover,
   line-height: 1.6;
 }
 
-.terminal .sev-critical {
+.terminal .sev-high {
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.sev-critical {
   color: #ff8a6b;
+}
+
+.sev-high {
+  color: var(--warning);
+  font-weight: 700;
 }
 
 .sev-critical {

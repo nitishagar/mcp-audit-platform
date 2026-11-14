@@ -19,7 +19,7 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
   },
   "AUTH-01": {
     category: "MCP07 Insufficient Authentication & Authorization",
-    severity: "critical",
+    severity: "high",
     cveRefs: [],
   },
   "AUTH-02": {
@@ -32,6 +32,11 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
     severity: "high",
     cveRefs: ["CVE-2025-49596"],
   },
+  "AUTH-04": {
+    category: "MCP07 Insufficient Authentication & Authorization",
+    severity: "high",
+    cveRefs: [],
+  },
   "PRIV-01": {
     category: "MCP02 Privilege Escalation via Scope Creep",
     severity: "high",
@@ -40,6 +45,16 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
   "PRIV-02": {
     category: "MCP02 Privilege Escalation via Scope Creep",
     severity: "medium",
+    cveRefs: [],
+  },
+  "PRIV-03": {
+    category: "MCP02 Privilege Escalation via Scope Creep",
+    severity: "high",
+    cveRefs: [],
+  },
+  "PRIV-04": {
+    category: "MCP02 Privilege Escalation via Scope Creep",
+    severity: "critical",
     cveRefs: [],
   },
   "ARG-01": { category: "MCP05 Command Injection & Execution", severity: "medium", cveRefs: [] },
