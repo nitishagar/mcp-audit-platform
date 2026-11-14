@@ -1,5 +1,5 @@
 import type { Check, RawFinding } from "./types.js";
-import { serverLabel } from "./types.js";
+import { serverLabel, unassessableToolEntry } from "./types.js";
 
 /** Tool-name fragments that imply destructive capability. */
 const DESTRUCTIVE = ["delete", "remove", "destroy", "exec", "shell", "write", "drop", "kill"];
@@ -21,7 +21,18 @@ export const destructiveToolsCheck: Check = {
       if (server === null || typeof server !== "object") return;
       const tools = Array.isArray(server.tools) ? server.tools : [];
       tools.forEach((tool, j) => {
-        if (tool === null || typeof tool !== "object") return;
+        if (tool === null || typeof tool !== "object") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry is not an object; cannot assess"),
+          );
+          return;
+        }
+        if (typeof (tool as { name?: unknown }).name !== "string") {
+          out.push(
+            unassessableToolEntry(i, j, server.name, "tool entry has no name; cannot assess"),
+          );
+          return;
+        }
         if (
           isDestructive(tool.name) &&
           (tool as { requireApproval?: unknown }).requireApproval !== true

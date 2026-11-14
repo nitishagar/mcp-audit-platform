@@ -8,18 +8,18 @@ function allFailFindings(result: AuditResult) {
   return result.checks.flatMap((c) => c.findings.filter((f) => f.status === "fail"));
 }
 
+/** Unassessable findings from ALL checks (a fail-status check can still carry
+ * unassessable rows; I1 forbids dropping them from the human surface). */
 function allUnassessable(result: AuditResult) {
-  return result.checks
-    .filter((c) => c.status === "unassessable")
-    .flatMap((c) => c.findings.map((f) => ({ finding: f, scope: c.scope ?? f.scope })));
+  return result.checks.flatMap((c) =>
+    c.findings
+      .filter((f) => f.status === "unassessable")
+      .map((f) => ({ finding: f, scope: f.scope ?? c.scope })),
+  );
 }
 
 function allNotApplicable(result: AuditResult) {
   return result.checks.filter((c) => c.status === "not_applicable");
-}
-
-function countByScope(result: AuditResult, scope: "input" | "coverage") {
-  return result.checks.filter((c) => c.status === "unassessable" && c.scope === scope).length;
 }
 
 /** Canonical JSON: key order fixed by construction, findings pre-sorted. */

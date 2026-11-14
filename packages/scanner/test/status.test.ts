@@ -126,3 +126,34 @@ describe("check statuses (I1)", () => {
     expect(result.checks.some((c) => c.status === "pass")).toBe(false);
   });
 });
+
+describe("junk tool entries (A0 red-team fix)", () => {
+  const junkCases: [string, unknown][] = [
+    ["null entry", [null]],
+    ["bare object entry", [{}]],
+    ["mixed junk and real", [null, { name: "read_file", description: "Reads." }]],
+  ];
+  for (const [label, tools] of junkCases) {
+    it(`tools with ${label} never yield a tool-check pass (I1)`, () => {
+      const raw = {
+        servers: [
+          {
+            name: "x",
+            transport: "stdio",
+            command: "c",
+            version: "1",
+            auditLog: true,
+            tools,
+          },
+        ],
+      };
+      const result = auditConfig(raw as never, "test");
+      const byId = new Map(result.checks.map((c) => [c.checkId, c]));
+      for (const id of ["PRIV-01", "ARG-01", "ARG-02"]) {
+        const c = byId.get(id);
+        expect(c?.status, `${id} ${label}`).toBe("unassessable");
+        expect(c?.scope, `${id} ${label}`).toBe("coverage");
+      }
+    });
+  }
+});

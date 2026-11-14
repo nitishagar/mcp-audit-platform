@@ -35,3 +35,20 @@ export interface Check {
 export function serverLabel(index: number, name: unknown): string {
   return typeof name === "string" && name.length > 0 ? name : `server[${index}]`;
 }
+
+/**
+ * Honest-unassessable row for a tool entry that cannot be assessed (A0
+ * red-team fix): junk entries must never be silently skipped into a pass.
+ */
+export function unassessableToolEntry(
+  serverIndex: number,
+  toolIndex: number,
+  serverName: unknown,
+  reason: string,
+): RawFinding {
+  return {
+    status: "unassessable",
+    pointer: `servers[${serverIndex}].tools[${toolIndex}]`,
+    detail: `${serverLabel(serverIndex, serverName)} tool entry ${toolIndex}: ${reason}`,
+  };
+}

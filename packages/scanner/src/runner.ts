@@ -118,8 +118,14 @@ function isRemoteServer(server: McpServer): boolean {
 }
 
 function hasToolsSomewhere(config: McpConfig): boolean {
+  // Only object-shaped entries count as "tool schemas supplied" (A0 red-team
+  // fix): a tools array of junk must not turn coverage-unassessable into pass.
   return config.servers.some(
-    (s) => s !== null && typeof s === "object" && Array.isArray(s.tools) && s.tools.length > 0,
+    (s) =>
+      s !== null &&
+      typeof s === "object" &&
+      Array.isArray(s.tools) &&
+      s.tools.some((t) => t !== null && typeof t === "object"),
   );
 }
 
