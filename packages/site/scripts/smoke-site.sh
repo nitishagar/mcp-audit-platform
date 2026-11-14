@@ -22,6 +22,16 @@ if [ "$code" != "200" ]; then
 fi
 echo "smoke: HTTP 200 on /"
 
+# C3: every generated page answers 200 too.
+for p in docs.html changelog.html report-sample.html rules/INV-01.html rules/SUP-01.html; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${PORT}/${p}")
+  if [ "$code" != "200" ]; then
+    echo "smoke: expected HTTP 200 on /${p}, got $code" >&2
+    exit 1
+  fi
+done
+echo "smoke: generated pages answer 200"
+
 # Both theme blocks define the identical CSS var set.
 dark_vars=$(sed -n '/^:root {/,/^}/p' dist/tokens.css | grep -o '\-\-[a-z-]*' | sort -u)
 light_vars=$(sed -n '/^:root\[data-theme="light"\]/,/^}/p' dist/tokens.css | grep -o '\-\-[a-z-]*' | sort -u)
