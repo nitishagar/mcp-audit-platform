@@ -1,6 +1,7 @@
 {
   "name": "mcp-audit-platform",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.30.2",
   "scripts": {
