@@ -36,7 +36,8 @@ original file locations.
 `${VAR}` / `${VAR:-default}` / `${env:VAR}` / `${input:id}` are references,
 not secrets — but a `${VAR:-default}` with a literal secret default is
 scanned. Tool schemas come from a native `tools[]` or the `--tools`
-tools/list file (A3a); without them, tool checks report "not determinable".
+tools/list file, which REPLACES any native `tools[]` on the matched
+server(s); without schemas, tool checks report "not determinable".
 
 ## Install
 
@@ -98,7 +99,8 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 | PRIV-03 no filesystem-root grants | MCP02 Privilege Escalation via Scope Creep | high |
 | PRIV-04 no container-privilege escapes | MCP02 Privilege Escalation via Scope Creep | critical |
 | ARG-01 ≤8 params | MCP05 Command Injection & Execution | medium |
-| ARG-02 no poisoning signals | MCP03 Tool Poisoning | critical |
+| ARG-02 no poisoning signals (incl. nested schema descriptions) | MCP03 Tool Poisoning | critical |
+| ARG-03 tool schemas constrain inputs (aggregated) | MCP05 Command Injection & Execution | low |
 | SEC-01 no live secrets in config | MCP01 Token Mismanagement & Secret Exposure | high |
 | SEC-02 no secret-shaped values | MCP01 Token Mismanagement & Secret Exposure | critical |
 | LOG-01 audit log present (server-side; coverage gap on client configs) | MCP08 Lack of Audit and Telemetry | medium |

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CHECK_IDS } from "../src/checks/index.js";
+import { inputSchemaCheck } from "../src/checks/arg-validation.js";
 import { filesystemBreadthCheck } from "../src/checks/tool-privilege.js";
 import { auditLogCheck } from "../src/checks/logging.js";
 import {
@@ -355,6 +356,61 @@ describe("PRIV-03/PRIV-04 (new, A2)", () => {
       ],
     });
     expect(passOut).toHaveLength(0);
+  });
+});
+
+describe("ARG-03 aggregated schema strictness (A3a)", () => {
+  const namedSchema = (extra: Record<string, unknown>) => ({
+    name: "x",
+    tools: [
+      {
+        name: "read_file",
+        inputSchema: { type: "object", properties: { path: { type: "string" } }, ...extra },
+      },
+    ],
+  });
+  it("constrained schema (additionalProperties false + pattern) passes", () => {
+    const out = inputSchemaCheck.run({
+      servers: [
+        namedSchema({
+          additionalProperties: false,
+          properties: { path: { type: "string", pattern: "^/app/" } },
+        }),
+      ],
+    });
+    expect(out).toHaveLength(0);
+  });
+  it("unconstrained schema fails once, aggregated, low-value wording", () => {
+    const out = inputSchemaCheck.run({ servers: [namedSchema({})] });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.status).toBe("fail");
+    expect(out[0]?.pointer).toBe("servers[0].tools");
+  });
+  it("missing inputSchema on a schema-bearing server counts as loose", () => {
+    const out = inputSchemaCheck.run({
+      servers: [
+        {
+          name: "x",
+          tools: [
+            {
+              name: "with_schema",
+              inputSchema: { type: "object", additionalProperties: false, properties: {} },
+            },
+            { name: "schemaless" },
+          ],
+        },
+      ],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.detail).toContain("schemaless");
+  });
+  it("legacy-only params (no inputSchema anywhere) is coverage-unassessable, never pass", () => {
+    const out = inputSchemaCheck.run({
+      servers: [{ name: "x", tools: [{ name: "legacy", params: { path: "string" } }] }],
+    });
+    expect(out).toHaveLength(1);
+    expect(out[0]?.status).toBe("unassessable");
+    expect(out[0]?.scope).toBe("coverage");
   });
 });
 

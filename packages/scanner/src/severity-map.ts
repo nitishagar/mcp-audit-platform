@@ -58,6 +58,7 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
     cveRefs: [],
   },
   "ARG-01": { category: "MCP05 Command Injection & Execution", severity: "medium", cveRefs: [] },
+  "ARG-03": { category: "MCP05 Command Injection & Execution", severity: "low", cveRefs: [] },
   "ARG-02": {
     category: "MCP03 Tool Poisoning",
     severity: "critical",
