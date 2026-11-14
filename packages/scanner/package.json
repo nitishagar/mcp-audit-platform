@@ -2,6 +2,7 @@
   "name": "@mcp-audit/scanner",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "mcp-audit": "./dist/cli.js"
