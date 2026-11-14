@@ -1,17 +1,44 @@
 {
-  "name": "@mcp-audit/scanner",
+  "name": "mcp-audit-scanner",
   "version": "0.1.0",
-  "private": true,
+  "description": "Deterministic offline static audit of MCP server / AI agent configs. Emits JSON, SARIF 2.1.0, and a Markdown summary. Zero runtime dependencies.",
   "license": "MIT",
   "type": "module",
   "bin": {
     "mcp-audit": "./dist/cli.js"
   },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitishagar/mcp-audit-platform.git",
+    "directory": "packages/scanner"
+  },
+  "bugs": {
+    "url": "https://github.com/nitishagar/mcp-audit-platform/issues"
+  },
+  "homepage": "https://github.com/nitishagar/mcp-audit-platform#readme",
+  "keywords": [
+    "mcp",
+    "security",
+    "audit",
+    "sarif",
+    "static-analysis",
+    "ai-agent"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "author": "nitishagar (https://github.com/nitishagar)",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
 }

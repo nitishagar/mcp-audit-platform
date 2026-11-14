@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @mcp-audit/scanner build && node scripts/build.mjs",
+    "build": "pnpm --filter mcp-audit-scanner build && node scripts/build.mjs",
     "test": "vitest run"
   },
   "devDependencies": {

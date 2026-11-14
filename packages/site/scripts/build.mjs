@@ -29,9 +29,7 @@ try {
   if (err.status === 1 && typeof err.stdout === "string" && err.stdout.length > 0) {
     sampleJson = err.stdout;
   } else {
-    console.error(
-      `site build: scanner run failed (build @mcp-audit/scanner first): ${err.message}`,
-    );
+    console.error(`site build: scanner run failed (build mcp-audit-scanner first): ${err.message}`);
     process.exit(1);
   }
 }
