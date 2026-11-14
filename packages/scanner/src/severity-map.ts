@@ -12,11 +12,23 @@ export interface SeverityEntry {
 
 /** Per-check severity mapping. Checks missing here default to medium + unmapped. */
 export const SEVERITY_MAP: Record<string, SeverityEntry> = {
-  "INV-01": { category: "MCP04 Software Supply Chain", severity: "medium", cveRefs: [] },
-  "AUTH-01": { category: "MCP07 Insufficient Authentication", severity: "critical", cveRefs: [] },
-  "AUTH-02": { category: "MCP07 Insufficient Authentication", severity: "high", cveRefs: [] },
+  "INV-01": {
+    category: "MCP04 Software Supply Chain Attacks & Dependency Tampering",
+    severity: "medium",
+    cveRefs: [],
+  },
+  "AUTH-01": {
+    category: "MCP07 Insufficient Authentication & Authorization",
+    severity: "critical",
+    cveRefs: [],
+  },
+  "AUTH-02": {
+    category: "MCP07 Insufficient Authentication & Authorization",
+    severity: "high",
+    cveRefs: [],
+  },
   "AUTH-03": {
-    category: "MCP07 Insufficient Authentication",
+    category: "MCP07 Insufficient Authentication & Authorization",
     severity: "high",
     cveRefs: ["CVE-2025-49596"],
   },

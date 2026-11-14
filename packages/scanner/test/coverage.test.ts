@@ -10,9 +10,9 @@ const CONSENSUS = [
   "MCP01 Token Mismanagement & Secret Exposure",
   "MCP02 Privilege Escalation via Scope Creep",
   "MCP03 Tool Poisoning",
-  "MCP04 Software Supply Chain",
+  "MCP04 Software Supply Chain Attacks & Dependency Tampering",
   "MCP05 Command Injection & Execution",
-  "MCP07 Insufficient Authentication",
+  "MCP07 Insufficient Authentication & Authorization",
   "MCP08 Lack of Audit and Telemetry",
 ];
 
