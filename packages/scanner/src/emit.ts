@@ -24,30 +24,52 @@ const SARIF_LEVEL: Record<string, string> = {
   low: "note",
 };
 
-/** SARIF 2.1.0 with the fields code-scanning consumers require. */
-export function emitSarif(result: AuditResult): string {
+/** SARIF 2.1.0 with the fields code-scanning consumers require.
+ * `sourcePath` is the scanned config file path; when omitted (bare library
+ * calls), `artifactLocation.uri` falls back to the finding's JSON pointer,
+ * which stays schema-valid. CLI callers always pass the real path. */
+export function emitSarif(result: AuditResult, sourcePath?: string): string {
   const rules = CHECKS.map((c) => ({
     id: c.id,
     name: c.id,
     shortDescription: { text: c.description },
     fullDescription: { text: c.description },
+    help: { text: c.description },
     helpUri: "https://github.com/nitishagar/mcp-audit-platform",
   }));
+  const locations = (f: { pointer: string }) => [
+    {
+      physicalLocation: {
+        artifactLocation: { uri: sourcePath ?? f.pointer },
+        // Config files have no line-anchored region; a 1-line region is the
+        // honest minimum code-scanning consumers require.
+        region: { startLine: 1, startColumn: 1, endLine: 1, endColumn: 1 },
+      },
+    },
+  ];
   const results = [
     ...allFailFindings(result).map((f) => ({
       ruleId: f.checkId,
       level: SARIF_LEVEL[f.severity] ?? "warning",
       message: { text: `[${f.id}] ${f.detail}` },
-      locations: [{ physicalLocation: { artifactLocation: { uri: f.pointer } } }],
-      properties: { severity: f.severity, frameworkRefs: f.frameworkRefs },
+      locations: locations(f),
+      partialFingerprints: { primaryLocationLineHash: f.id },
+      properties: { severity: f.severity, pointer: f.pointer, frameworkRefs: f.frameworkRefs },
     })),
-    // Unassessable checks are reported, never dropped (I1).
+    // Unassessable checks are reported, never dropped (I1). Level "note":
+    // GitHub documents only error/warning/note and surfaces "none" as open alerts.
     ...allUnassessable(result).map((f) => ({
       ruleId: f.checkId,
-      level: "none",
+      level: "note",
       message: { text: `[${f.id}] UNASSESSABLE: ${f.detail}` },
-      locations: [{ physicalLocation: { artifactLocation: { uri: f.pointer } } }],
-      properties: { severity: f.severity, status: "unassessable", frameworkRefs: f.frameworkRefs },
+      locations: locations(f),
+      partialFingerprints: { primaryLocationLineHash: f.id },
+      properties: {
+        severity: f.severity,
+        status: "unassessable",
+        pointer: f.pointer,
+        frameworkRefs: f.frameworkRefs,
+      },
     })),
   ];
   const sarif = {
@@ -103,8 +125,8 @@ export function emitSummary(result: AuditResult): string {
   return lines.join("\n");
 }
 
-export function emit(result: AuditResult, format: Format): string {
-  if (format === "sarif") return emitSarif(result);
+export function emit(result: AuditResult, format: Format, sourcePath?: string): string {
+  if (format === "sarif") return emitSarif(result, sourcePath);
   if (format === "summary") return emitSummary(result);
   return emitJson(result);
 }
