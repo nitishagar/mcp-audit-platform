@@ -3,7 +3,7 @@ import { serverLabel } from "./types.js";
 
 function isRemote(server: { transport?: unknown; url?: unknown }): boolean {
   if (server.transport === "http" || server.transport === "https") return true;
-  return typeof server.url === "string" && /^https?:\/\//.test(server.url);
+  return typeof server.url === "string" && /^https?:\/\//i.test(server.url);
 }
 
 function transportUnknown(server: { transport?: unknown; url?: unknown }): boolean {
@@ -14,7 +14,8 @@ function transportUnknown(server: { transport?: unknown; url?: unknown }): boole
  * A2 AUTH-01: auth is PRESENT if the config carries any client-side
  * credential signal (plan §4-A2, verified shapes in R5):
  * - an Authorization header, or a header named like api-key / token / auth;
- * - a placeholder reference in such a header (a resolved secret, unseen);
+ * - a placeholder reference in such a header (a reference exists; its
+   resolution at runtime is NOT verified);
  * - native `auth` with type ≠ none, or Cursor/VS Code static-OAuth objects.
  * OAuth discovered at connect time is invisible statically — the finding
  * wording says so instead of asserting none exists.
@@ -31,8 +32,14 @@ function clientAuthSignal(server: Record<string, unknown>): boolean {
   const auth = server["auth"];
   if (auth !== null && typeof auth === "object") {
     const t = (auth as Record<string, unknown>)["type"];
-    // Claude Code auth.type; Cursor static-OAuth (CLIENT_ID present).
-    if ((typeof t === "string" && t !== "none") || "CLIENT_ID" in (auth as object)) return true;
+    // Claude Code auth.type; Cursor static-OAuth (non-empty CLIENT_ID present).
+    if (
+      (typeof t === "string" && t.length > 0 && t !== "none") ||
+      "CLIENT_ID" in (auth as object)
+    ) {
+      const cid = (auth as Record<string, unknown>)["CLIENT_ID"];
+      if (typeof cid !== "string" || cid.length > 0) return true;
+    }
   }
   return false;
 }
@@ -158,7 +165,7 @@ export const tlsCheck: Check = {
       if (server === null || typeof server !== "object") return;
       if (transportUnknown(server)) return;
       const url = typeof server.url === "string" ? server.url : "";
-      if (!url.startsWith("http://")) return;
+      if (!/^http:\/\//i.test(url)) return;
       let host: string | null = null;
       try {
         host = new URL(url).hostname;

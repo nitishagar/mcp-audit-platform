@@ -3,50 +3,106 @@ import { serverLabel } from "./types.js";
 
 /**
  * A2 INV-01: the pinned-version question is answered from the LAUNCH COMMAND
- * for client configs (npx/uvx/docker-style refs), from the native `version`
- * field when present, and honestly "cannot derive" for local binaries.
+ * for client configs, from the native `version` field when present, and
+ * honestly "cannot derive" when the launch shape defeats decoding (red-team
+ * round 1: a decode failure is coverage-unassessable, never a silent pass).
  */
 const LAUNCHERS = new Set(["npx", "pnpm", "bunx", "uvx", "pipx", "docker"]);
 
-/** npm-style ref is pinned when the last @ (after any /) is a real version. */
+/** Flags whose NEXT arg is a value (not the package/image). */
+const LAUNCHER_VALUE_FLAGS = new Set(["-p", "--package", "--from", "--python", "--py"]);
+const DOCKER_VALUE_FLAGS = new Set([
+  "-p",
+  "--publish",
+  "-e",
+  "--env",
+  "--env-file",
+  "--name",
+  "-w",
+  "--workdir",
+  "-u",
+  "--user",
+  "--network",
+  "--net",
+  "-l",
+  "--label",
+  "-v",
+  "--volume",
+  "--mount",
+  "-h",
+  "--hostname",
+  "--entrypoint",
+]);
+
+/**
+ * Exact npm version pin: x.y.z(-prerelease)? — semver RANGES (^~>x), wildcards
+ * (1.x, *), and dist-tags (latest/beta/next) float, so they are NOT pins
+ * (red-team round 1: ranges/dist-tags were false pins).
+ */
 function npmPinned(ref: string): boolean {
   const at = ref.lastIndexOf("@");
   if (at <= ref.lastIndexOf("/")) return false; // bare or @org/pkg — no version
-  const v = ref.slice(at + 1).toLowerCase();
-  return v.length > 0 && v !== "latest";
+  return /^\d+\.\d+\.\d+(-[\w.]+)?$/.test(ref.slice(at + 1));
 }
 
-/** py-style ref is pinned on an ==, @, or >=/< spec. */
+/** py-style ref is pinned on an == spec (>, <, @ are range-ish but bound). */
 function pyPinned(ref: string): boolean {
-  return /[=@<>]/.test(ref);
+  return /==/.test(ref);
 }
 
-/** docker ref is pinned with a :tag (not :latest) or an @digest. */
+/** docker pin = digest, or an exact numeric tag; movable tags are not pins. */
 function dockerPinned(ref: string): boolean {
-  if (ref.lastIndexOf("@") > 0) return true; // digest pin
-  const colon = ref.indexOf(":");
-  if (colon <= ref.lastIndexOf("/")) return false; // no tag
-  return ref.slice(colon + 1).toLowerCase() !== "latest";
+  const at = ref.lastIndexOf("@");
+  if (at > 0) return true; // digest pin
+  const slash = ref.lastIndexOf("/");
+  const colon = ref.lastIndexOf(":");
+  if (colon <= slash) return false; // no tag
+  return /^\d+(\.\d+)*$/.test(ref.slice(colon + 1));
 }
 
 function isFlag(arg: string): boolean {
   return arg.startsWith("-");
 }
 
-/** The FIRST non-flag arg of npx/uvx-style launches is the package spec;
- * everything after it is an argument to the launched server, not a ref. */
-function scanLauncherArgs(args: string[], py: boolean): { index: number; ref: string } | null {
+type ImgRef = { index: number; ref: string };
+type RefScan =
+  | { kind: "unpinned"; index: number; ref: string }
+  | { kind: "pinned" }
+  | { kind: "none" };
+
+/**
+ * The FIRST non-flag arg of npx/uvx-style launches is the package spec;
+ * everything after it is an argument to the launched server. Also decodes
+ * -p/--package/--from (space and equals forms). Distinct kinds so the caller
+ * never confuses "pinned" with "no decodable ref" (red-team round 1).
+ */
+function scanLauncherArgs(args: string[], py: boolean): RefScan {
   for (let j = 0; j < args.length; j++) {
-    const ref = args[j];
-    if (ref === undefined || isFlag(ref)) continue;
-    const pinned = py ? pyPinned(ref) : npmPinned(ref);
-    return pinned ? null : { index: j, ref };
+    const a = args[j];
+    if (a === undefined) continue;
+    const eq = /^(--package|--from)=([\s\S]+)$/.exec(a);
+    if (eq) {
+      const ref = eq[2] ?? "";
+      const pinned = py ? pyPinned(ref) : npmPinned(ref);
+      return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j, ref };
+    }
+    if (LAUNCHER_VALUE_FLAGS.has(a)) {
+      const next = args[j + 1];
+      if (next !== undefined && !isFlag(next)) {
+        const pinned = py ? pyPinned(next) : npmPinned(next);
+        return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j + 1, ref: next };
+      }
+      continue;
+    }
+    if (isFlag(a)) continue;
+    const pinned = py ? pyPinned(a) : npmPinned(a);
+    return pinned ? { kind: "pinned" } : { kind: "unpinned", index: j, ref: a };
   }
-  return null;
+  return { kind: "none" };
 }
 
-/** First non-flag arg after `docker run …` = the image ref. */
-function dockerImage(args: string[]): { index: number; ref: string } | null {
+/** First non-flag arg after `docker run …` = the image ref (or null). */
+function dockerImage(args: string[]): ImgRef | null {
   let seenRun = false;
   for (let j = 0; j < args.length; j++) {
     const a = args[j];
@@ -55,9 +111,11 @@ function dockerImage(args: string[]): { index: number; ref: string } | null {
       if (a === "run") seenRun = true;
       continue;
     }
+    const eq = /^(--\w[\w-]*)=/.exec(a);
+    const eqFlag = eq?.[1];
+    if (eqFlag !== undefined && DOCKER_VALUE_FLAGS.has(eqFlag)) continue; // equals-form value flag
     if (isFlag(a)) {
-      // skip -v / --volume value pairs where the next arg is the value
-      if ((a === "-v" || a === "--volume" || a === "--mount") && j + 1 < args.length) j++;
+      if (DOCKER_VALUE_FLAGS.has(a) && j + 1 < args.length) j++;
       continue;
     }
     return { index: j, ref: a };
@@ -79,29 +137,55 @@ export const inventoryCheck: Check = {
       const args = Array.isArray(server.args)
         ? (server.args as unknown[]).filter((a): a is string => typeof a === "string")
         : [];
-      if (LAUNCHERS.has(launcher) && args.length > 0) {
-        const hit =
-          launcher === "docker"
-            ? (() => {
-                const img = dockerImage(args);
-                return img && !dockerPinned(img.ref) ? img : null;
-              })()
-            : scanLauncherArgs(args, launcher === "uvx" || launcher === "pipx");
-        if (hit) {
+      if (!LAUNCHERS.has(launcher)) {
+        // Not a recognizable launcher: a local binary or script.
+        out.push({
+          status: "unassessable",
+          pointer: `servers[${i}].command`,
+          detail: `${serverLabel(i, server.name)} runs \`${command}\` — a pinned version cannot be derived from a local command; declare a native version or switch to a pinned registry launch`,
+        });
+        return;
+      }
+      if (launcher === "docker") {
+        const img = dockerImage(args);
+        if (!img) {
+          out.push({
+            status: "unassessable",
+            scope: "coverage",
+            pointer: `servers[${i}].args`,
+            detail: `${serverLabel(i, server.name)} docker launch has no decodable image ref (docker compose or flag-only form); review the image pin manually`,
+          });
+          return;
+        }
+        if (!dockerPinned(img.ref)) {
           out.push({
             status: "fail",
-            pointer: `servers[${i}].args[${hit.index}]`,
-            detail: `${serverLabel(i, server.name)} launches \`${hit.ref}\` without a version pin; pin an exact version so the code can be audited against advisories`,
+            pointer: `servers[${i}].args[${img.index}]`,
+            detail: `${serverLabel(i, server.name)} launches image \`${img.ref}\` without a digest or exact-version tag; floating tags change under you`,
           });
         }
         return;
       }
-      // Not a recognizable launcher: a local binary or script.
-      out.push({
-        status: "unassessable",
-        pointer: `servers[${i}].command`,
-        detail: `${serverLabel(i, server.name)} runs \`${command}\` — a pinned version cannot be derived from a local command; declare a native version or switch to a pinned registry launch`,
-      });
+      const scan = scanLauncherArgs(
+        launcher === "pipx" ? args.filter((a, k) => !(k === 0 && a === "run")) : args,
+        launcher === "uvx" || launcher === "pipx",
+      );
+      if (scan.kind === "none") {
+        out.push({
+          status: "unassessable",
+          scope: "coverage",
+          pointer: `servers[${i}].args`,
+          detail: `${serverLabel(i, server.name)} \`${launcher}\` launch carries no decodable package ref; review the pin manually`,
+        });
+        return;
+      }
+      if (scan.kind === "unpinned") {
+        out.push({
+          status: "fail",
+          pointer: `servers[${i}].args[${scan.index}]`,
+          detail: `${serverLabel(i, server.name)} launches \`${scan.ref}\` without an exact version pin; pin an exact version so the code can be audited against advisories`,
+        });
+      }
     });
     return out;
   },

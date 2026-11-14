@@ -162,6 +162,18 @@ describe("AUTH-04 TLS (new, A2)", () => {
     { name: "plain http remote", url: "http://api.example.com/mcp", want: "fail" },
     { name: "loopback http is AUTH-02's", url: "http://localhost:3000/mcp", want: "pass" },
     { name: "0.0.0.0 http", url: "http://0.0.0.0:8080/mcp", want: "pass" },
+    // red-team round 1: userinfo cannot hide the host
+    {
+      name: "loopback userinfo does not spoof",
+      url: "http://localhost@evil.example/mcp",
+      want: "fail",
+    },
+    {
+      name: "real loopback with userinfo passes",
+      url: "http://user@localhost:3000/mcp",
+      want: "pass",
+    },
+    { name: "uppercase scheme detected", url: "HTTP://api.example.com/mcp", want: "fail" },
   ];
   for (const c of cases) {
     it(c.name, () => {
@@ -188,6 +200,26 @@ describe("PRIV-01 prefers vendor annotations (A2, spec semantics)", () => {
       servers: [{ name: "x", tools: [ann({ readOnlyHint: false, destructiveHint: false })] }],
     });
     expect(out.some((r) => r.status === "fail")).toBe(false);
+  });
+  it("spec default: readOnlyHint false with hint absent is destructive", () => {
+    const out = destructiveToolsCheck.run({
+      servers: [
+        { name: "x", tools: [{ name: "t", annotations: { readOnlyHint: false }, params: {} }] },
+      ],
+    });
+    expect(out.some((r) => r.status === "fail")).toBe(true);
+  });
+  it("annotations object with no hints at all is destructive (readOnlyHint defaults false)", () => {
+    const out = destructiveToolsCheck.run({
+      servers: [{ name: "x", tools: [{ name: "t", annotations: {}, params: {} }] }],
+    });
+    expect(out.some((r) => r.status === "fail")).toBe(true);
+  });
+  it("PRIV-03 catches the literal home-root grant", () => {
+    const out = filesystemBreadthCheck.run({
+      servers: [{ name: "x", command: "npx", args: ["-y", "pkg@1.0", "~/"] }],
+    });
+    expect(out.some((r) => r.status === "fail")).toBe(true);
   });
   it("unannotated write/delete name → fail; unannotated read name → pass", () => {
     const failOut = destructiveToolsCheck.run({

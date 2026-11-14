@@ -109,7 +109,7 @@ export const toolCountCheck: Check = {
  * A2 PRIV-03 (new): a filesystem-type launch granting the filesystem ROOT —
  * "/", "~", "$HOME", or a drive root — exposes everything on the volume.
  */
-const BROAD_PATHS = new Set(["/", "~", "$HOME", "$HOME/", "C:\\", "C:/", "c:\\", "c:/"]);
+const BROAD_PATHS = new Set(["/", "~/", "~", "$HOME", "$HOME/", "C:\\", "C:/", "c:\\", "c:/"]);
 
 function isBroadPath(arg: string): boolean {
   const a = arg.trim();
