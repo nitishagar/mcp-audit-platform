@@ -14,7 +14,7 @@ jobs:
     environment: npm
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - uses: pnpm/action-setup@fe02b34f5dbd9a59fb7cd6e1a33d0fd1a6fbdc2d # v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1d84f1d3352d2fba9b3 # v4
         with:
           node-version-file: .nvmrc
