@@ -243,6 +243,11 @@ export function auditConfig(
       "servers",
     ).result;
   }
+  if (malformed < 0 && config.servers.length === 0) {
+    // A1 red-team residual: an adapter may deliver zero servers (all skipped
+    // with warnings) — that is an input problem, never a vacuous all-pass.
+    return unassessableAll(toolVersion, "no server entries found in the input", "config").result;
+  }
   const folded = dedupeTools(config);
   const toolsAvailable = hasToolsSomewhere(folded.config);
   const remotePresent = folded.config.servers.some((s) => isRemoteServer(s));

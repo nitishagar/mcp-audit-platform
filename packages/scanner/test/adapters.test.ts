@@ -147,13 +147,33 @@ describe("A1 red-team fixes", () => {
     expect(surfaces).toContain("[REDACTED:pattern]");
   });
 
-  it("malformed Claude Code project groups surface as warnings, never a silent drop", () => {
+  it("malformed Claude Code project groups warn, then the audit is input-unassessable (never vacuous pass)", () => {
     const dir = mkdtempSync(join(tmpdir(), "cc-warn-"));
     const path = join(dir, "config.json");
     writeFileSync(path, JSON.stringify({ projects: { "/x": { mcpServers: "junk" } } }));
     const loaded = loadConfigAny(path, 2 * 1024 * 1024);
     if (!("loaded" in loaded)) throw new Error("load failed");
     expect(loaded.loaded.adapterWarnings.join(" ")).toContain("skipped");
+    const result = auditConfig(loaded.loaded.config, "test", [], loaded.loaded.adapterWarnings);
+    expect(result.checks.every((c) => c.status === "unassessable" && c.scope === "input")).toBe(
+      true,
+    );
+  });
+
+  it("projects without an mcpServers key are an ordinary skip — no spurious warning", () => {
+    const dir = mkdtempSync(join(tmpdir(), "cc-plain-"));
+    const path = join(dir, "config.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        projects: { "/x": { someOtherData: 1 } },
+        mcpServers: { fs: { command: "c" } },
+      }),
+    );
+    const loaded = loadConfigAny(path, 2 * 1024 * 1024);
+    if (!("loaded" in loaded)) throw new Error("load failed");
+    expect(loaded.loaded.adapterWarnings).toEqual([]);
+    expect(loaded.loaded.pointerBases).toContain("mcpServers.fs");
   });
 });
 

@@ -110,12 +110,22 @@ function normalizeClaudeCode(
   const projects = parsed["projects"];
   if (projects !== null && typeof projects === "object" && !Array.isArray(projects)) {
     for (const [path, body] of Object.entries(projects as Record<string, unknown>)) {
-      const group =
-        body !== null && typeof body === "object"
-          ? (body as Record<string, unknown>)["mcpServers"]
-          : null;
-      if (group === null || typeof group !== "object" || Array.isArray(group)) {
+      const bodyObj =
+        body !== null && typeof body === "object" ? (body as Record<string, unknown>) : null;
+      const mcpServers = bodyObj?.["mcpServers"];
+      if (bodyObj === null) {
         // Never a silent drop: the skip is surfaced as a warning (path only).
+        warnings.push(
+          redactString(`projects[${JSON.stringify(path)}].mcpServers is not an object; skipped`),
+        );
+        continue;
+      }
+      // Absent key = ordinary project without MCP servers: a legitimate skip
+      // with no warning (a real ~/.claude.json has many such entries).
+      if (mcpServers === undefined) continue;
+      const malformed =
+        mcpServers === null || typeof mcpServers !== "object" || Array.isArray(mcpServers);
+      if (malformed) {
         warnings.push(
           redactString(`projects[${JSON.stringify(path)}].mcpServers is not an object; skipped`),
         );
@@ -124,7 +134,7 @@ function normalizeClaudeCode(
       // Pointer base quotes the project path — it is a file path, not a secret.
       servers.push(
         ...normalizeMcpServersObject(
-          group as Record<string, unknown>,
+          mcpServers as Record<string, unknown>,
           `projects[${JSON.stringify(path)}].mcpServers`,
         ),
       );
