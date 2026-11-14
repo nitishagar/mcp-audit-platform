@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scan in your browser · mcp-audit</title>
+<link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="tokens.css">
+</head>
+<body>
+<nav><a href="index.html">← mcp-audit</a></nav>
+<main>
+  <h1>Scan in your browser — nothing leaves this page</h1>
+  <p class="muted">The scanner runs entirely in this tab. There is no network call: no upload, no telemetry, no account. View-source or DevTools → Network shows zero requests after load.</p>
+  <p><label for="file">Pick a config file</label> <input type="file" id="file" accept=".json,application/json"> or paste it:</p>
+  <textarea id="input" rows="12" cols="80" placeholder='{"mcpServers": { … }} or {"servers": [ … ]}'></textarea>
+  <p><button type="button" id="scan-btn">Scan (static analysis only — not a pentest)</button></p>
+  <div id="output" hidden>
+    <h2>Result</h2>
+    <p id="counts" class="muted"></p>
+    <pre id="summary"></pre>
+    <p>
+      <button type="button" id="download-audit">Download audit.json</button>
+      · <button type="button" id="download-report">Download report.html</button>
+    </p>
+    <p class="muted" id="gate"></p>
+  </div>
+</main>
+<script type="module">
+  import { scan, renderReport, summaryCounts } from "./scan.js";
+  const $ = (id) => document.getElementById(id);
+  const readFile = () =>
+    new Promise((resolve) => {
+      const f = $("file").files?.[0];
+      if (!f) return resolve(null);
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.readAsText(f);
+    });
+  $("scan-btn").addEventListener("click", async () => {
+    const text = (await readFile()) ?? $("input").value;
+    const { result, gateError } = scan(text ?? "");
+    $("output").hidden = false;
+    if (gateError !== null || result === null) {
+      $("gate").textContent = `Could not assess: ${gateError ?? "unknown"}`;
+      $("counts").textContent = "";
+      $("summary").textContent = "";
+      return;
+    }
+    $("gate").textContent = "";
+    $("counts").textContent = summaryCounts(result);
+    $("summary").textContent = JSON.stringify(result, null, 2);
+    const auditBlob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+    const reportBlob = new Blob([renderReport(result)], { type: "text/html" });
+    const save = (blob, name) => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+    };
+    $("download-audit").addEventListener("click", () => save(auditBlob, "audit.json"));
+    $("download-report").addEventListener("click", () => save(reportBlob, "report.html"));
+  });
+</script>
+</body>
+</html>

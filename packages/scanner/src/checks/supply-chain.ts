@@ -1,6 +1,4 @@
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import snapshotJson from "../data/advisories.json" with { type: "json" };
 import type { Check, RawFinding } from "./types.js";
 import { serverLabel } from "./types.js";
 
@@ -28,10 +26,7 @@ interface Snapshot {
   advisories: Advisory[];
 }
 
-const here = dirname(fileURLToPath(import.meta.url));
-const SNAPSHOT: Snapshot = JSON.parse(
-  readFileSync(resolve(here, "../data/advisories.json"), "utf8"),
-) as Snapshot;
+const SNAPSHOT = snapshotJson as unknown as Snapshot;
 
 /** Minimal semver-ish compare for dotted numeric versions (snapshot ranges). */
 function cmp(a: string, b: string): number {

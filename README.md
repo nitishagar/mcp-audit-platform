@@ -9,7 +9,8 @@ Static analysis only — not a penetration test. See each package README.
 
 - `packages/scanner` — `mcp-audit` CLI: audits MCP config JSON + tool schemas,
   emits JSON / SARIF / Markdown summary. Offline, deterministic.
-- `packages/site` — static pi.dev-themed site (tiers, sample report, install).
+- `packages/site` — static pi.dev-themed site (tiers, sample report, install,
+  and a fully client-side [browser scanner](packages/site/src/scan.html) — nothing uploaded).
 
 ## Develop
 
