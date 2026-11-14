@@ -20,6 +20,24 @@ Exit codes: `0` clean · `1` findings at/above `--fail-on` (default `critical`)
 Single formats (`json`, `sarif`, `summary`) write to stdout; `all` writes
 `audit.json`, `audit.sarif`, `summary.md` into `--out-dir`.
 
+## Supported inputs (A1)
+
+The scanner auto-detects the input format; `--client <format>` overrides
+(mismatch is a clean exit 2, never a guess). Findings point at the
+original file locations.
+
+| Format | Shape |
+|---|---|
+| Claude Desktop / Code / Cursor / Windsurf | `{"mcpServers": {"<name>": {command,args,env \| url,headers \| serverUrl,…}}}` |
+| Claude Code `~/.claude.json` | top-level `mcpServers` + `projects["<path>"].mcpServers` |
+| VS Code | `{"servers": {"<name>": {type,command,args,env \| url,headers}}, "inputs"?}` |
+| Native | `{"servers": [{name, transport, command/url, version, auditLog, tools}]}` |
+
+`${VAR}` / `${VAR:-default}` / `${env:VAR}` / `${input:id}` are references,
+not secrets — but a `${VAR:-default}` with a literal secret default is
+scanned. Tool schemas come from a native `tools[]` or the `--tools`
+tools/list file (A3a); without them, tool checks report "not determinable".
+
 ## Install
 
 The npm registry package is `mcp-audit-scanner` (the `mcp-audit` name is an

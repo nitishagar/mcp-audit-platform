@@ -13,8 +13,9 @@ import {
   type AuditResult,
   auditConfig,
   gateFailureResult,
-  loadConfig,
+  loadConfigAny,
 } from "./runner.js";
+import { CLIENT_FORMATS, type ClientFormat } from "./adapters/types.js";
 import { SEVERITY_RANK, type Severity } from "./schema.js";
 
 const VERSION = "0.1.0";
@@ -24,10 +25,14 @@ export const HELP = `mcp-audit ${VERSION} — static MCP / AI agent config audit
 Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
-    [--strict]
+    [--strict] [--client claude-desktop|claude-code|cursor|vscode|windsurf|native]
 
 Formats: a single format writes to stdout; "all" writes audit.json,
 audit.sarif and summary.md into --out-dir (default ./audit-out).
+
+Input: auto-detects the client format (mcpServers{…}, VS Code servers{…},
+Claude Code ~/.claude.json, native servers[…]); --client overrides.
+Findings point at the original file locations.
 
 Exit codes: 0 clean (coverage gaps allowed) · 1 findings at/above
 --fail-on (default critical) · 2 input-unassessable (unreadable input,
@@ -44,6 +49,7 @@ interface Options {
   failOn: Severity;
   maxBytes: number;
   strict: boolean;
+  client?: ClientFormat;
 }
 
 function parseArgs(argv: string[]): { configPath: string; options: Options } {
@@ -66,7 +72,14 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     else if (arg === "--fail-on") options.failOn = (argv[++i] ?? "") as Severity;
     else if (arg === "--max-bytes") options.maxBytes = Number(argv[++i] ?? Number.NaN);
     else if (arg === "--strict") options.strict = true;
-    else if (arg.startsWith("--")) {
+    else if (arg === "--client") {
+      const v = argv[++i] ?? "";
+      if (!CLIENT_FORMATS.includes(v as ClientFormat)) {
+        console.error(`unsupported --client ${v}; supported: ${CLIENT_FORMATS.join(", ")}`);
+        process.exit(2);
+      }
+      options.client = v as ClientFormat;
+    } else if (arg.startsWith("--")) {
       console.error(`unknown flag: ${arg}\n${HELP}`);
       process.exit(2);
     } else positional.push(arg);
@@ -127,11 +140,11 @@ function writeAll(outDir: string, result: AuditResult, sourcePath: string): void
 
 export function main(argv: string[]): number {
   const { configPath, options } = parseArgs(argv);
-  const loaded = loadConfig(configPath, options.maxBytes);
+  const loaded = loadConfigAny(configPath, options.maxBytes, options.client);
   const result =
     "error" in loaded
       ? gateFailureResult(loaded.error.message, VERSION)
-      : auditConfig(loaded.config, VERSION);
+      : auditConfig(loaded.loaded.config, VERSION, loaded.loaded.pointerBases);
   if ("error" in loaded) {
     console.error(`mcp-audit: ${loaded.error.message}`);
   }

@@ -8,6 +8,16 @@ function isPlaceholder(value: string): boolean {
   return v === "" || v === "CHANGE_ME" || /^\$\{[^}]*\}$/.test(v) || v === "example";
 }
 
+/**
+ * Literal default inside `${VAR:-default}` (A1): the one place a placeholder
+ * may hide a real secret (plan §4-A1). Returns null when absent/empty.
+ */
+function placeholderDefault(value: string): string | null {
+  const m = /^\$\{[^:}]+:-(.*)\}$/.exec(value.trim());
+  const g = m?.[1];
+  return g && g.length > 0 ? g : null;
+}
+
 function hasSecretShape(value: string): boolean {
   return VALUE_PATTERNS.some(({ re }) => {
     re.lastIndex = 0;
@@ -53,12 +63,21 @@ export const envSecretsCheck: Check = {
       const leaves: StringLeaf[] = [];
       stringLeaves(i, server, `servers[${i}]`, leaves);
       for (const leaf of leaves) {
-        if (leaf.value.length >= 4 && isDenylistedKey(leaf.key) && !isPlaceholder(leaf.value)) {
+        const def = placeholderDefault(leaf.value);
+        const liveValue = isPlaceholder(leaf.value) ? def : leaf.value;
+        if (
+          leaf.value.length >= 4 &&
+          isDenylistedKey(leaf.key) &&
+          liveValue !== null &&
+          !isPlaceholder(liveValue)
+        ) {
           // Evidence is the LOCATION only; the value never leaves this function.
+          // The detail names the key, not the pointer — the pointer field (and
+          // the summary renderer) carries the original-file location (A1).
           out.push({
             status: "fail",
             pointer: leaf.pointer,
-            detail: `${serverLabel(i, (server as { name?: unknown }).name)} stores a live secret at ${leaf.pointer} (value withheld [REDACTED:${leaf.key}]); move it to a vault or environment reference`,
+            detail: `${serverLabel(i, (server as { name?: unknown }).name)} stores a live secret under key "${leaf.key}" (value withheld [REDACTED:${leaf.key}]); move it to a vault or environment reference`,
           });
         }
       }
@@ -81,11 +100,13 @@ export const valuePatternCheck: Check = {
       for (const leaf of leaves) {
         // Skip denylisted keys (SEC-01 owns those) to avoid double-reporting.
         if (isDenylistedKey(leaf.key)) continue;
-        if (leaf.value.length >= 8 && hasSecretShape(leaf.value)) {
+        const def = placeholderDefault(leaf.value);
+        const shapes = [leaf.value, def ?? ""].filter((v) => v.length >= 8);
+        if (shapes.some((v) => hasSecretShape(v))) {
           out.push({
             status: "fail",
             pointer: leaf.pointer,
-            detail: `${serverLabel(i, (server as { name?: unknown }).name)} has a secret-shaped value at ${leaf.pointer} (value withheld [REDACTED:pattern]); rotate and vault it`,
+            detail: `${serverLabel(i, (server as { name?: unknown }).name)} has a secret-shaped value under key "${leaf.key}" (value withheld [REDACTED:pattern]); rotate and vault it`,
           });
         }
       }
