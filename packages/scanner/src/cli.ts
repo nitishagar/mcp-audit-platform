@@ -15,6 +15,7 @@ import {
   auditConfig,
   gateFailureResult,
   loadConfigAny,
+  notApplicableAll,
   readJsonFile,
 } from "./runner.js";
 import { discoverConfigs } from "./adapters/discover.js";
@@ -190,11 +191,18 @@ function writeAll(outDir: string, result: AuditResult, sourcePath: string): void
 /** A4: audit every well-known client config in one deterministic run. */
 function runDiscover(options: Options): number {
   const d = discoverConfigs(options.maxBytes);
+  // M-3 decision: zero configs found (no files, no warnings) is "nothing to
+  // audit" — not_applicable + exit 0, so --discover cannot fail a CI build on
+  // an empty runner. Files PRESENT but unreadable still carry warnings and
+  // keep the input-unassessable exit 2 (the A1 residual guard).
+  const zeroFound = d.config.servers.length === 0 && d.warnings.length === 0;
   const bases = d.config.servers.map((s) => {
     const f = (s as { _sourceFile?: string })._sourceFile ?? "";
     return f ? `${f}::${s._pointerBase}` : s._pointerBase;
   });
-  const result = auditConfig(d.config, VERSION, bases, d.warnings);
+  const result = zeroFound
+    ? notApplicableAll(VERSION, ["no client configs found on this machine"], d.sources)
+    : auditConfig(d.config, VERSION, bases, d.warnings);
   result.sources = d.sources;
   if (options.format === "all") {
     try {
