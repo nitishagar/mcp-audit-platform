@@ -1,0 +1,70 @@
+name: Mule live (real server, read-only)
+
+# T2 (PLAN-PRODUCT-COMPLETE §9.4): nightly capture of the pinned reference
+# server + drift diff + behavioural oracle. Installs the REAL server from npm
+# (pinned, --ignore-scripts) — does NOT depend on this repo being published.
+# Everything runs in $RUNNER_TEMP; the harness refuses non-temp sandboxes.
+
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "packages/scanner/src/adapters/**"
+      - "packages/scanner/src/checks/**"
+      - "scripts/mule-*.mjs"
+      - "packages/scanner/fixtures/real/**"
+
+permissions:
+  contents: read
+
+jobs:
+  mule-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install the pinned reference server (--ignore-scripts)
+        run: npm install --ignore-scripts --no-audit --no-fund @modelcontextprotocol/server-filesystem@2.3.0 --prefix "$RUNNER_TEMP/mule"
+
+      - name: Seed the throw-away sandbox
+        run: |
+          mkdir -p "$RUNNER_TEMP/mule/sandbox"
+          echo "seed line one" > "$RUNNER_TEMP/mule/sandbox/seed.txt"
+
+      - name: Capture tools/list + behavioural oracle (sandbox-guarded)
+        run: |
+          node scripts/mule-capture.mjs \
+            --prefix "$RUNNER_TEMP/mule" \
+            --package @modelcontextprotocol/server-filesystem \
+            --sandbox "$RUNNER_TEMP/mule/sandbox" \
+            --out "$RUNNER_TEMP/capture.json" --behavior
+
+      - name: Drift diff against the golden fixture
+        run: node scripts/mule-drift.mjs --capture "$RUNNER_TEMP/capture.json" --golden packages/scanner/fixtures/real/filesystem-2.3.0/tools-list.json
+
+      - name: Build the scanner
+        run: |
+          corepack enable pnpm
+          pnpm install --frozen-lockfile
+          pnpm --filter mcp-audit-scanner build
+
+      - name: Scan the client fixtures against the fresh capture (oracle)
+        run: |
+          for f in packages/scanner/fixtures/real/filesystem-2.3.0/claude-desktop.*.json; do
+            node packages/scanner/dist/cli.js scan "$f" --tools "$RUNNER_TEMP/capture.json" --format summary
+          done
+
+      - name: Upload the capture + report artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mule-capture
+          path: |
+            ${{ runner.temp }}/capture.json
+          if-no-files-found: warn
