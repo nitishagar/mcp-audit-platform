@@ -90,6 +90,7 @@ Remote servers add `url`, `auth: { "type": "oauth" }`, `originValidation: true`.
 | Check | Consensus category | Severity |
 |---|---|---|
 | INV-01 pinned version (derived from the launch command) | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
+| SUP-01 bundled-advisory match (offline OSV snapshot) | MCP04 Software Supply Chain Attacks & Dependency Tampering | medium |
 | AUTH-01 remote server carries client-side credentials | MCP07 Insufficient Authentication & Authorization | high |
 | AUTH-02 localhost-only bind | MCP07 Insufficient Authentication & Authorization | high |
 | AUTH-03 Origin validation (server-side; coverage gap on client configs) | MCP07 Insufficient Authentication & Authorization | high |

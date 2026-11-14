@@ -279,7 +279,7 @@ export function auditConfig(
             // BEFORE redaction so attacker-named pointer bases are scrubbed.
             redactString(translatePointer(r.pointer, pointerBases)),
             redactString(r.detail),
-            [`${FRAMEWORK}: ${resolved.category}`, ...resolved.cveRefs],
+            [`${FRAMEWORK}: ${resolved.category}`, ...resolved.cveRefs, ...(r.refs ?? [])],
             resolved.unmapped,
             // Check-returned unassessable rows are coverage-scoped unless the
             // check declares otherwise (A2 sets per-row scope explicitly).
