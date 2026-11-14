@@ -29,10 +29,11 @@ describe("tool dedupe (plan: first wins + one warning)", () => {
     expect(warnings[0]).toContain('duplicate tool "delete_x"');
   });
 
-  it("audit emits one finding plus one warning for duplicates", () => {
+  it("audit emits one fail + one approval-coverage row plus one warning for duplicates", () => {
     const result = auditConfig(dupeConfig(), "test");
     const priv = result.checks.find((c) => c.checkId === "PRIV-01");
-    expect(priv?.findings).toHaveLength(1);
+    expect(priv?.findings).toHaveLength(2); // 1 fail (delete_x) + 1 approval-coverage row (A2)
+    expect(priv?.findings.filter((f) => f.status === "fail")).toHaveLength(1);
     expect(result.warnings).toHaveLength(1);
   });
 

@@ -56,8 +56,8 @@
         every output; findings name locations, never values.
       </p>
       <pre class="terminal"><code>$ mcp-audit scan mcp.json --format summary
-<span class="sev-critical">[critical] AUTH-01</span> at `servers[0].auth`
-  payments-remote is remote with no authentication configured
+<span class="sev-high">[high] AUTH-01</span> at `mcpServers.payments.headers`
+  payments-remote is remote with no client-side credentials configured
   Refs: OWASP MCP Top 10 v2025-beta: MCP07 Insufficient Authentication &amp; Authorization
 <span class="sev-critical">[critical] ARG-02</span> at `servers[0].tools[1].description`
   Tool "helper" matches a poisoning pattern; treat tool text as untrusted input
