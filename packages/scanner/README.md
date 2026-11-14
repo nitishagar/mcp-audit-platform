@@ -17,8 +17,10 @@ echo "exit=$?"
 Exit codes: `0` clean · `1` findings at/above `--fail-on` (default `critical`)
 · `2` unassessable input or write error (takes precedence over `1`).
 
-Single formats (`json`, `sarif`, `summary`) write to stdout; `all` writes
-`audit.json`, `audit.sarif`, `summary.md` into `--out-dir`.
+Single formats (`json`, `sarif`, `summary`, `html`) write to stdout; `all`
+writes `audit.json`, `audit.sarif`, `report.html`, `summary.md` into
+`--out-dir`. The HTML report is the print-ready pack (board summary,
+prioritized fix checklist, methodology appendix) — see `report`.
 
 ## Supported inputs (A1)
 
@@ -54,6 +56,14 @@ Until the first publish lands, run from source:
 git clone https://github.com/nitishagar/mcp-audit-platform
 cd mcp-audit-platform && pnpm install && pnpm build
 node packages/scanner/dist/cli.js scan /path/to/your/mcp.json
+```
+
+## Report subcommand
+
+Re-render a saved audit.json (the Snapshot fulfilment path):
+
+```sh
+mcp-audit report audit.json --format html > report.html
 ```
 
 ## Publish (maintainers)
