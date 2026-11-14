@@ -1,0 +1,18 @@
+name: False positive
+description: The scanner flagged something that is actually fine — this feeds rule improvements.
+labels: [false-positive]
+body:
+  - type: dropdown
+    id: check
+    attributes:
+      label: Check ID
+      options: [INV-01, INV-02, AUTH-01, AUTH-02, AUTH-03, AUTH-04, PRIV-01, PRIV-02, PRIV-03, PRIV-04, ARG-01, ARG-02, ARG-03, SEC-01, SEC-02, LOG-01, SUP-01]
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is this finding wrong?
+      description: Share the shape of the config, not its contents.
+    validations:
+      required: true
