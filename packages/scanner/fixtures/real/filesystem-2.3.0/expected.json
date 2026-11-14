@@ -219,13 +219,12 @@
           "ARG-01": "unassessable",
           "ARG-02": "unassessable",
           "SEC-01": "fail",
-          "SEC-02": "fail",
+          "SEC-02": "pass",
           "LOG-01": "unassessable"
         },
         "exitDefault": 1,
         "failRows": [
-          "SEC-01",
-          "SEC-02"
+          "SEC-01"
         ]
       },
       "withTools": {
@@ -239,14 +238,13 @@
           "ARG-01": "pass",
           "ARG-02": "pass",
           "SEC-01": "fail",
-          "SEC-02": "fail",
+          "SEC-02": "pass",
           "LOG-01": "unassessable"
         },
         "exitDefault": 1,
         "failRows": [
           "PRIV-01",
-          "SEC-01",
-          "SEC-02"
+          "SEC-01"
         ]
       }
     }
@@ -258,5 +256,8 @@
     "SEC-01": "high",
     "SEC-02": "critical",
     "PRIV-01": "high"
-  }
+  },
+  "amendments": [
+    "2026-11-14: SEC-02 pass for claude-code.secrets.json \u2014 SEC-01 owns denylisted keys (existing split), only SEC-01 fires"
+  ]
 }

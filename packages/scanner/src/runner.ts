@@ -1,4 +1,6 @@
 import { lstatSync, readFileSync } from "node:fs";
+import { FormatError, normalizeFile } from "./adapters/index.js";
+import type { ClientFormat, NormalizedConfig } from "./adapters/types.js";
 import { CHECKS } from "./checks/index.js";
 import { FRAMEWORK, severityFor } from "./severity-map.js";
 import {
@@ -40,10 +42,11 @@ export function validateShape(parsed: unknown): parsed is McpConfig {
   return Array.isArray(servers) && servers.length > 0;
 }
 
-export function loadConfig(
+/** Read+parse a JSON file with the F1b/F1 guards (symlinks, FIFOs, cap, no echo). */
+export function readJsonFile(
   path: string,
   maxBytes: number,
-): { config: McpConfig } | { error: LoadError } {
+): { parsed: unknown } | { error: LoadError } {
   let stat: { size: number; isSymbolicLink: () => boolean; isFile: () => boolean };
   try {
     stat = lstatSync(path);
@@ -83,7 +86,17 @@ export function loadConfig(
     const where = position !== undefined ? ` at position ${position}` : "";
     return { error: { kind: "parse", message: `${path} is not valid JSON${where}` } };
   }
-  if (!validateShape(parsed)) {
+  return { parsed };
+}
+
+/** Native-shape loader (fixtures/back-compat): read + strict servers[] gate. */
+export function loadConfig(
+  path: string,
+  maxBytes: number,
+): { config: McpConfig } | { error: LoadError } {
+  const loaded = readJsonFile(path, maxBytes);
+  if ("error" in loaded) return loaded;
+  if (!validateShape(loaded.parsed)) {
     return {
       error: {
         kind: "shape",
@@ -91,7 +104,44 @@ export function loadConfig(
       },
     };
   }
-  return { config: parsed };
+  return { config: loaded.parsed as McpConfig };
+}
+
+export interface LoadedAudit {
+  config: NormalizedConfig;
+  pointerBases: string[];
+  format: ClientFormat;
+  /** Adapter-level warnings (e.g. skipped malformed Claude Code projects). */
+  adapterWarnings: string[];
+}
+
+/**
+ * A1 loader: read any supported client format (or native) and normalize it.
+ * Unknown shapes are a clean exit-2 with the supported list — never a guess.
+ */
+export function loadConfigAny(
+  path: string,
+  maxBytes: number,
+  client?: ClientFormat,
+): { loaded: LoadedAudit } | { error: LoadError } {
+  const file = readJsonFile(path, maxBytes);
+  if ("error" in file) return file;
+  try {
+    const { config, format, warnings } = normalizeFile(file.parsed, client);
+    return {
+      loaded: {
+        config,
+        format,
+        pointerBases: config.servers.map((s) => s._pointerBase),
+        adapterWarnings: warnings,
+      },
+    };
+  } catch (err) {
+    if (err instanceof FormatError) {
+      return { error: { kind: "shape", message: redactString(`${path}: ${err.message}`) } };
+    }
+    throw err;
+  }
 }
 
 /**
@@ -105,6 +155,15 @@ function isClassifiableServer(server: unknown): boolean {
   return ["command", "url", "serverUrl", "type", "transport"].some(
     (k) => typeof s[k] === "string" && (s[k] as string).length > 0,
   );
+}
+
+/** A1: rewrite `servers[i]` prefixes to the adapter-recorded original path. */
+function translatePointer(pointer: string, bases: string[] | undefined): string {
+  if (!bases) return pointer;
+  const m = /^servers\[(\d+)\](.*)$/.exec(pointer);
+  if (!m) return pointer;
+  const base = bases[Number(m[1])];
+  return base === undefined ? pointer : `${base}${m[2]}`;
 }
 
 function firstMalformedServerIndex(config: McpConfig): number {
@@ -170,7 +229,12 @@ export function dedupeTools(config: McpConfig): { config: McpConfig; warnings: s
  * - a check whose `requires` includes "remote" with no remote server →
  *   "not_applicable" (distinct from pass, no findings, no exit effect).
  */
-export function auditConfig(config: McpConfig, toolVersion: string): AuditResult {
+export function auditConfig(
+  config: McpConfig,
+  toolVersion: string,
+  pointerBases?: string[],
+  adapterWarnings?: string[],
+): AuditResult {
   const malformed = firstMalformedServerIndex(config);
   if (malformed >= 0) {
     return unassessableAll(
@@ -178,6 +242,11 @@ export function auditConfig(config: McpConfig, toolVersion: string): AuditResult
       `servers[${malformed}] declares none of command/url/serverUrl/type/transport; malformed server entry`,
       "servers",
     ).result;
+  }
+  if (malformed < 0 && config.servers.length === 0) {
+    // A1 red-team residual: an adapter may deliver zero servers (all skipped
+    // with warnings) — that is an input problem, never a vacuous all-pass.
+    return unassessableAll(toolVersion, "no server entries found in the input", "config").result;
   }
   const folded = dedupeTools(config);
   const toolsAvailable = hasToolsSomewhere(folded.config);
@@ -204,7 +273,9 @@ export function auditConfig(config: McpConfig, toolVersion: string): AuditResult
             check.id,
             r.status,
             resolved.severity,
-            redactString(r.pointer),
+            // A1 red-team Medium 2: translate to the original-file location
+            // BEFORE redaction so attacker-named pointer bases are scrubbed.
+            redactString(translatePointer(r.pointer, pointerBases)),
             redactString(r.detail),
             [`${FRAMEWORK}: ${resolved.category}`, ...resolved.cveRefs],
             resolved.unmapped,
@@ -256,7 +327,7 @@ export function auditConfig(config: McpConfig, toolVersion: string): AuditResult
     idScheme: ID_SCHEME,
     schemaVersion: SCHEMA_VERSION,
     checks,
-    warnings: folded.warnings,
+    warnings: [...folded.warnings, ...(adapterWarnings ?? [])],
   };
 }
 
