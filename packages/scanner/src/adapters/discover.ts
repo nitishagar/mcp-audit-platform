@@ -87,7 +87,7 @@ function readOne(
   | { warning: string }
   | null {
   if (!existsSync(file.path)) return null; // missing = silent skip (plan A4)
-  let stat;
+  let stat: { isSymbolicLink: () => boolean; isFile: () => boolean; size: number };
   try {
     stat = statSync(file.path);
   } catch {
