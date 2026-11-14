@@ -1,4 +1,4 @@
-# @mcp-audit/scanner
+# mcp-audit-scanner
 
 Deterministic offline static audit of MCP server / AI agent configs.
 Emits JSON, SARIF 2.1.0, and a Markdown summary. Zero runtime dependencies.
@@ -19,6 +19,33 @@ Exit codes: `0` clean · `1` findings at/above `--fail-on` (default `critical`)
 
 Single formats (`json`, `sarif`, `summary`) write to stdout; `all` writes
 `audit.json`, `audit.sarif`, `summary.md` into `--out-dir`.
+
+## Install
+
+The npm registry package is `mcp-audit-scanner` (the `mcp-audit` name is an
+unrelated package). The CLI command it installs is `mcp-audit`:
+
+```sh
+npm install -g mcp-audit-scanner && mcp-audit scan mcp.json
+```
+
+Until the first publish lands, run from source:
+
+```sh
+git clone https://github.com/nitishagar/mcp-audit-platform
+cd mcp-audit-platform && pnpm install && pnpm build
+node packages/scanner/dist/cli.js scan /path/to/your/mcp.json
+```
+
+## Publish (maintainers)
+
+```sh
+pnpm --filter mcp-audit-scanner build   # dist/ must exist: files=["dist"]
+cd packages/scanner && npm publish
+```
+
+`files: ["dist"]` overrides the gitignored `dist/`, so the published tarball
+carries the bin. Do not skip the build step before publishing.
 
 ## Input shape
 

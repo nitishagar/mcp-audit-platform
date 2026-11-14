@@ -3,6 +3,10 @@
   "private": true,
   "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nitishagar/mcp-audit-platform.git"
+  },
   "packageManager": "pnpm@10.30.2",
   "scripts": {
     "typecheck": "pnpm -r --if-present typecheck",
