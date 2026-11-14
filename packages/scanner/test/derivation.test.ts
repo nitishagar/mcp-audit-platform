@@ -65,6 +65,17 @@ describe("INV-01 derives pinning from the launch command (A2)", () => {
       server: { command: "npx", args: ["pkg"], version: "9.9.9" },
       want: "pass",
     },
+    // final red-team Medium: a native version claim that is itself a floating ref
+    {
+      name: "native version latest is not a pin",
+      server: { command: "npx", args: ["pkg"], version: "latest" },
+      want: "fail",
+    },
+    {
+      name: "native version range is not a pin",
+      server: { command: "npx", args: ["pkg"], version: "1.x" },
+      want: "fail",
+    },
     // red-team round 1: ranges / wildcards / dist-tags are NOT pins
     {
       name: "npm range is not a pin",

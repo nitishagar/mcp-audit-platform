@@ -54,7 +54,7 @@
         },
         {
           "if": { "properties": { "status": { "enum": ["pass", "not_applicable"] } } },
-          "then": { "properties": { "findings": { "maxItems": 0 } } }
+          "then": { "properties": { "findings": { "type": "array", "maxItems": 0 } } }
         }
       ]
     },

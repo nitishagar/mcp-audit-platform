@@ -28,6 +28,8 @@
 <script type="module">
   import { scan, renderReport, summaryCounts } from "./scan.js";
   const $ = (id) => document.getElementById(id);
+  let auditBlob = null;
+  let reportBlob = null;
   const readFile = () =>
     new Promise((resolve) => {
       const f = $("file").files?.[0];
@@ -49,16 +51,22 @@
     $("gate").textContent = "";
     $("counts").textContent = summaryCounts(result);
     $("summary").textContent = JSON.stringify(result, null, 2);
-    const auditBlob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
-    const reportBlob = new Blob([renderReport(result)], { type: "text/html" });
-    const save = (blob, name) => {
+    auditBlob = new Blob([JSON.stringify(result, null, 2)], { type: "application/json" });
+    reportBlob = new Blob([renderReport(result)], { type: "text/html" });
+    // Download listeners are registered ONCE (outside the scan handler); each
+    // scan replaces the pending blob so repeated scans never fire stale blobs.
+    let auditBlob = null;
+    let reportBlob = null;
+    const save = (get, name) => {
+      const blob = get();
+      if (blob === null) return;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = name;
       a.click();
     };
-    $("download-audit").addEventListener("click", () => save(auditBlob, "audit.json"));
-    $("download-report").addEventListener("click", () => save(reportBlob, "report.html"));
+    $("download-audit").addEventListener("click", () => save(() => auditBlob, "audit.json"));
+    $("download-report").addEventListener("click", () => save(() => reportBlob, "report.html"));
   });
 </script>
 </body>

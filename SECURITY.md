@@ -2,9 +2,9 @@
 
 ## Reporting a vulnerability
 
-Email **security@localhost** — placeholder until the product domain is chosen
-(tracking: PLAN-PRODUCT-COMPLETE D-1). Until then, open a GitHub security
-advisory via **Report a vulnerability** on this repository.
+Open a GitHub security advisory via **Report a vulnerability** on this
+repository. (An email address will be published once the product domain is
+chosen — tracking: PLAN-PRODUCT-COMPLETE D-1.)
 
 Please include: affected component (scanner / site / action), the input file
 or request that triggers the issue, and the expected vs actual behavior.

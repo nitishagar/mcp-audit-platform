@@ -21,11 +21,19 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      - name: Assert the tag matches the manifest version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest="$(node -p "require('./packages/scanner/package.json').version")"
+          if [ "$tag" != "$manifest" ]; then
+            echo "::error::tag v$tag does not match package.json version $manifest"
+            exit 1
+          fi
       - name: Publish to npm (trusted publishing / OIDC)
         run: npm publish --access public
         working-directory: packages/scanner
       - name: Live npx smoke of the published package
-        run: npx --yes mcp-audit-scanner@${GITHUB_REF_NAME#v} --help | grep -q "static MCP"
+        run: npx --yes "mcp-audit-scanner@${GITHUB_REF_NAME#v}" --help | grep -q "static MCP"
       - name: GitHub Release with the audit schema
         run: |
           gh release create "$GITHUB_REF_NAME" packages/scanner/audit.schema.json \

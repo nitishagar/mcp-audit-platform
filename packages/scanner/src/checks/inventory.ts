@@ -179,7 +179,18 @@ export const inventoryCheck: Check = {
     const out: RawFinding[] = [];
     config.servers.forEach((server, i) => {
       if (server === null || typeof server !== "object") return;
-      if (typeof server.version === "string" && server.version.length > 0) return; // native pin
+      if (typeof server.version === "string" && server.version.length > 0) {
+        // A native version claim must itself be an exact pin: "latest"/ranges
+        // are exactly the floating refs INV-01 exists to catch (final
+        // red-team Medium).
+        if (/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(server.version)) return;
+        out.push({
+          status: "fail",
+          pointer: `servers[${i}].version`,
+          detail: `${serverLabel(i, server.name)} declares native version "${server.version}" which is not an exact semver pin`,
+        });
+        return;
+      }
       const command = typeof server.command === "string" ? server.command : "";
       const launcher = command.split("/").pop()?.toLowerCase() ?? "";
       const args = Array.isArray(server.args)
