@@ -66,6 +66,23 @@ const { RULES, CHECK_IDS: checkIds } = await import(scannerUrl("rules.js")).then
 
 // Step 2: tiers + sample into template.
 const tiers = JSON.parse(readFileSync(resolve(siteRoot, "src/tiers.json"), "utf8"));
+// I11: every deliverable string must have a mechanism entry in promises.json,
+// and every tier must carry a CTA — a promise without a mechanism fails the build.
+const promises = JSON.parse(readFileSync(resolve(siteRoot, "promises.json"), "utf8"));
+for (const tier of tiers) {
+  if (!tier.cta || typeof tier.cta.href !== "string" || tier.cta.href.length === 0) {
+    console.error(`site build: tier "${tier.name}" has no cta object (I11)`);
+    process.exit(1);
+  }
+  for (const d of tier.deliverables) {
+    if (!(d in promises)) {
+      console.error(
+        `site build: deliverable "${d}" (${tier.name}) has no promises.json mechanism (I11)`,
+      );
+      process.exit(1);
+    }
+  }
+}
 const tierCards = tiers
   .map(
     (t) => `<div class="tier">
@@ -76,6 +93,7 @@ const tierCards = tiers
 ${t.deliverables.map((d) => `<li>${esc(d)}</li>`).join("\n")}
 </ul>
 <p class="turnaround">Turnaround: ${esc(t.turnaround)}</p>
+<p><a class="cta" href="${esc(t.cta.href)}">${esc(t.cta.label)}</a></p>
 </div>`,
   )
   .join("\n");
@@ -139,6 +157,17 @@ writeFileSync(
 <p class="muted">Full CLI reference: <code>mcp-audit --help</code> and the scanner README on GitHub.</p>`,
   ),
 );
+const contactHtml = page(
+  "Contact",
+  `<h1>Request a review</h1>
+<p>Pick a tier on the <a href="index.html#tiers">pricing section</a>, then request it here. Checkout and email intake arrive with the domain decision; until then the request path is a GitHub issue — never include config contents or secrets in an issue.</p>
+<h2 id="snapshot">Snapshot — $490</h2>
+<p>Run the free scanner, then <a href="https://github.com/nitishagar/mcp-audit-platform/issues" rel="noopener" target="_blank">open a Snapshot request issue</a> titled "Snapshot request". The operator replies with the intake details and the redacted <code>audit.json</code> hand-off, reviews it by hand, and returns the report pack (same-day SLA applies to business hours).</p>
+<h2 id="deep-audit">Deep Audit — $1,900</h2>
+<p><a href="https://github.com/nitishagar/mcp-audit-platform/issues" rel="noopener" target="_blank">Open a Deep Audit request issue</a> titled "Deep Audit request". The operator confirms scope (up to 15 servers), schedules the kickoff, and runs the 5-day plan with 2 retests inside 60 days.</p>
+<p class="muted">Both tiers: the only artifact the operator needs is the redacted <code>audit.json</code> the scanner produces — your raw configs stay on your machine.</p>`,
+);
+writeFileSync(resolve(dist, "contact.html"), contactHtml);
 const changelog = readFileSync(resolve(siteRoot, "../../CHANGELOG.md"), "utf8");
 writeFileSync(
   resolve(dist, "changelog.html"),
@@ -166,6 +195,17 @@ const sampleReport = execFileSync(
 );
 writeFileSync(resolve(dist, "report-sample.html"), sampleReport);
 copyFileSync(resolve(siteRoot, "src/scan.html"), resolve(dist, "scan.html"));
+copyFileSync(resolve(siteRoot, "_headers"), resolve(dist, "_headers"));
+const scanUi = await esbuild.build({
+  entryPoints: [resolve(siteRoot, "src/scan-ui.mjs")],
+  outfile: resolve(dist, "scan-ui.js"),
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  minify: false,
+  logLevel: "silent",
+});
 console.log(
   `site build: OK (${fails.length} sample findings, ${tiers.length} tiers, ${checkIds.length} rule pages)`,
 );

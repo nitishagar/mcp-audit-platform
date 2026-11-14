@@ -82,3 +82,43 @@ describe("C3/C6 site content", () => {
     expect(numbers.length).toBeGreaterThan(0);
   });
 });
+
+describe("C2: tier CTAs, I11 promises, security headers", () => {
+  const tiers = JSON.parse(readFileSync(resolve(here, "../src/tiers.json"), "utf8"));
+  const promises = JSON.parse(readFileSync(resolve(here, "../promises.json"), "utf8"));
+
+  it("every tier card renders exactly one CTA with a non-empty href", () => {
+    const html = builtHtml();
+    expect((html.match(/class="cta"/g) ?? []).length).toBe(tiers.length);
+    for (const tier of tiers) {
+      expect(html, `${tier.name} cta label`).toContain(tier.cta.label);
+      expect(html, `${tier.name} cta href`).toContain(`href="${tier.cta.href}"`);
+    }
+    // Free stays on-page; paid tiers point at the interim contact path.
+    expect(tiers[0].cta.href.startsWith("#")).toBe(true);
+    for (const tier of tiers.slice(1)) {
+      expect(tier.cta.href.startsWith("contact.html")).toBe(true);
+    }
+  });
+
+  it("every deliverable has a mechanism entry in promises.json (I11)", () => {
+    for (const tier of tiers) {
+      for (const d of tier.deliverables) {
+        expect(promises, `${tier.name}: ${d}`).toHaveProperty([d]);
+        expect(promises[d].length, d).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it("security headers ship: nosniff globally, connect-src 'none' on /scan*", () => {
+    const headers = readFileSync(resolve(here, "../_headers"), "utf8");
+    expect(headers).toContain("X-Content-Type-Options: nosniff");
+    expect(headers).toContain("/scan*");
+    expect(headers).toContain("connect-src 'none'");
+    const scanPage = readFileSync(resolve(here, "../src/scan.html"), "utf8");
+    expect(scanPage).toContain("connect-src 'none'");
+    // The dist copy carries it too (Pages serves dist).
+    const distHeaders = readFileSync(resolve(here, "../dist/_headers"), "utf8");
+    expect(distHeaders).toContain("connect-src 'none'");
+  });
+});
