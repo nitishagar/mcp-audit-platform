@@ -90,3 +90,83 @@ describe("HTML report (A6)", () => {
     expect(out.join(" ")).toContain("not an audit.json");
   });
 });
+
+describe("A6 red-team: report re-render trust boundary", () => {
+  it("a hostile audit.json with canary details is re-redacted in the HTML", () => {
+    const hostile = {
+      tool: "mcp-audit",
+      toolVersion: "0.0.9",
+      framework: "OWASP MCP Top 10 v2025-beta",
+      idScheme: "v1",
+      schemaVersion: "2.0",
+      checks: [
+        {
+          checkId: "SEC-01",
+          status: "fail",
+          findings: [
+            {
+              id: "aaaaaaaaaaaa",
+              checkId: "SEC-01",
+              status: "fail",
+              severity: "high",
+              pointer: "servers[0]",
+              detail: "live secret ghp_canarytoken12345678 stored in config",
+              frameworkRefs: ["x"],
+            },
+          ],
+        },
+      ],
+      warnings: ["leak attempt ghp_canarytoken12345678"],
+    };
+    const tmp = join(mkdtempSync(join(tmpdir(), "hostile-")), "audit.json");
+    writeFileSync(tmp, JSON.stringify(hostile));
+    const out: string[] = [];
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(process.stdout, "write").mockImplementation(((c: unknown) => {
+      out.push(String(c));
+      return true;
+    }) as never);
+    const code = main(["report", tmp, "--format", "html"]);
+    errSpy.mockRestore();
+    expect(code).toBe(0);
+    const html = out.join("");
+    expect(html).not.toContain("ghp_canarytoken12345678");
+    expect(html).not.toContain("CANARY-API-KEY-9f8e7d6c"); // unshaped text is NOT redacted (by design)
+    expect(html).toContain("[REDACTED:pattern]");
+    void 0;
+  });
+
+  it("a forged severity attribute cannot inject markup", () => {
+    const forged = {
+      tool: "mcp-audit",
+      toolVersion: "0.0.9",
+      framework: "f",
+      idScheme: "v1",
+      schemaVersion: "2.0",
+      checks: [
+        {
+          checkId: "SEC-01",
+          status: "fail",
+          findings: [
+            {
+              id: "bbbbbbbbbbbb",
+              checkId: "SEC-01",
+              status: "fail",
+              severity: 'critical"><img src=x onerror=alert(1)>',
+              pointer: "p",
+              detail: "d",
+              frameworkRefs: [],
+            },
+          ],
+        },
+      ],
+      warnings: [],
+    };
+    const tmp = join(mkdtempSync(join(tmpdir(), "forge-")), "audit.json");
+    writeFileSync(tmp, JSON.stringify(forged));
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const code = main(["report", tmp, "--format", "html"]);
+    errSpy.mockRestore();
+    expect(code).toBe(2); // severity enum validation rejects it
+  });
+});

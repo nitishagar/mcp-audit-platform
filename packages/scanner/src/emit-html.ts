@@ -19,7 +19,9 @@ function esc(s: string): string {
 }
 
 function severityClass(sev: string): string {
-  return `sev-${sev}`;
+  // esc: runReport re-renders untrusted audit.json files — the severity must
+  // never reach an attribute raw (A6 red-team Medium 2).
+  return esc(`sev-${sev}`);
 }
 
 const EFFORT_RANK: Record<string, number> = { quick: 0, moderate: 1, deep: 2 };
@@ -56,6 +58,10 @@ export function emitHtml(result: AuditResult): string {
   L.push(`<html lang="en">`);
   L.push(`<head>`);
   L.push(`<meta charset="utf-8">`);
+  // Defense in depth: the report is JS-free by design (A6 red-team Low 6).
+  L.push(
+    `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">`,
+  );
   L.push(`<meta name="viewport" content="width=device-width, initial-scale=1">`);
   L.push(`<title>mcp-audit report</title>`);
   L.push(`<style>`);

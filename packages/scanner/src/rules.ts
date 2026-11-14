@@ -2,7 +2,7 @@
  * A6: single source of per-rule metadata — consumed by the SARIF emitter
  * (help.text), the HTML report (rationale/remediation), and the site rule
  * pages (C3). Keep each entry factual and remediation-first; copy-guard
- * applies to these strings (I9: static analysis only, never pentest claims).
+ * applies to these strings (I9: honest wording only, no assurance claims).
  */
 export interface RuleMeta {
   id: string;

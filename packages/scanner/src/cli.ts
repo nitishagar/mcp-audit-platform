@@ -209,16 +209,50 @@ function runReport(auditPath: string, options: Options): number {
     return 2;
   }
   const parsed = file.parsed as Partial<AuditResult>;
-  if (
-    parsed === null ||
-    typeof parsed !== "object" ||
-    !Array.isArray(parsed.checks) ||
-    typeof parsed.tool !== "string"
-  ) {
+  // Full shape validation: a hostile audit.json must exit 2 cleanly, never
+  // crash the renderer or smuggle markup into a buyer deliverable (M2).
+  const SEVERITIES = new Set(["critical", "high", "medium", "low"]);
+  const valid = (() => {
+    if (parsed === null || typeof parsed !== "object") return false;
+    if (typeof parsed.tool !== "string" || typeof parsed.toolVersion !== "string") return false;
+    if (typeof parsed.framework !== "string" || typeof parsed.idScheme !== "string") return false;
+    if (!Array.isArray(parsed.checks) || !Array.isArray(parsed.warnings)) return false;
+    if (parsed.warnings.some((w) => typeof w !== "string")) return false;
+    for (const c of parsed.checks) {
+      if (c === null || typeof c !== "object") return false;
+      const cr = c as Record<string, unknown>;
+      if (typeof cr["checkId"] !== "string" || !Array.isArray(cr["findings"])) return false;
+      if (!["pass", "fail", "unassessable", "not_applicable"].includes(String(cr["status"])))
+        return false;
+      for (const f of cr["findings"] as unknown[]) {
+        if (f === null || typeof f !== "object") return false;
+        const fr = f as Record<string, unknown>;
+        if (typeof fr["id"] !== "string" || typeof fr["checkId"] !== "string") return false;
+        if (!["fail", "unassessable"].includes(String(fr["status"]))) return false;
+        if (!SEVERITIES.has(String(fr["severity"]))) return false;
+        if (typeof fr["pointer"] !== "string" || typeof fr["detail"] !== "string") return false;
+        if (!Array.isArray(fr["frameworkRefs"])) return false;
+        if ((fr["frameworkRefs"] as unknown[]).some((x) => typeof x !== "string")) return false;
+      }
+    }
+    return true;
+  })();
+  if (!valid) {
     console.error(`mcp-audit: ${auditPath} is not an audit.json produced by mcp-audit scan`);
     return 2;
   }
   const result = parsed as AuditResult;
+  // I4 trust boundary: the file's provenance (scanner version, integrity) is
+  // unknown — re-run redaction over every carried string before rendering.
+  result.warnings = result.warnings.map((w) => redactString(w));
+  for (const c of result.checks as unknown as {
+    findings: { pointer: string; detail: string }[];
+  }[]) {
+    for (const f of c.findings) {
+      f.pointer = redactString(f.pointer);
+      f.detail = redactString(f.detail);
+    }
+  }
   const html = options.format === "all" ? emitHtml(result) : emit(result, options.format);
   process.stdout.write(html);
   return 0;
