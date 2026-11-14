@@ -25,11 +25,13 @@ import { SEVERITY_RANK, type Severity } from "./schema.js";
 
 /**
  * B1: single source of truth for the tool version — the package manifest.
- * dist/cli.js -> ../../package.json resolves to packages/scanner/package.json.
+ * Both module layouts resolve one level up: dist/../package.json and
+ * src/../package.json are packages/scanner/package.json (the review caught
+ * the earlier ../../ path pointing at a nonexistent packages/package.json).
  */
 const VERSION = (() => {
   try {
-    const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), "../../package.json");
+    const pkgPath = resolve(dirname(fileURLToPath(import.meta.url)), "../package.json");
     return (JSON.parse(readFileSync(pkgPath, "utf8")) as { version: string }).version;
   } catch {
     return "0.0.0";
@@ -42,6 +44,7 @@ Usage:
   mcp-audit scan <config.json> [--format json|sarif|summary|all]
     [--out-dir <dir>] [--fail-on critical|high|medium|low] [--max-bytes <n>]
     [--strict] [--client claude-desktop|claude-code|cursor|vscode|windsurf|native]
+  mcp-audit --version
   mcp-audit report <audit.json> [--format html]   # re-render a saved audit
     [--tools tools-list.json]  # replaces any native tools[] on matched servers
   mcp-audit scan --discover    # audit every well-known client config in one run
@@ -88,6 +91,10 @@ function parseArgs(argv: string[]): { configPath: string; options: Options } {
     const arg = argv[i] as string;
     if (arg === "--help" || arg === "-h") {
       console.log(HELP);
+      process.exit(0);
+    }
+    if (arg === "--version") {
+      console.log(`mcp-audit ${VERSION}`);
       process.exit(0);
     }
     if (arg === "--format") options.format = (argv[++i] ?? "") as Options["format"];
