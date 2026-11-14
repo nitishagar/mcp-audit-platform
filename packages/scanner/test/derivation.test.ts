@@ -11,6 +11,7 @@ import {
 } from "../src/checks/transport-auth.js";
 import { containerPrivilegeCheck, destructiveToolsCheck } from "../src/checks/tool-privilege.js";
 import { inventoryCheck } from "../src/checks/inventory.js";
+import { supplyChainCheck } from "../src/checks/supply-chain.js";
 import { auditConfig } from "../src/runner.js";
 
 /** A2: table-driven derivation cases — ≥2 pass and ≥2 fail per changed check. */
@@ -411,6 +412,58 @@ describe("ARG-03 aggregated schema strictness (A3a)", () => {
     expect(out).toHaveLength(1);
     expect(out[0]?.status).toBe("unassessable");
     expect(out[0]?.scope).toBe("coverage");
+  });
+});
+
+describe("SUP-01 bundled advisories (A5)", () => {
+  it("mcp-remote@0.1.15 is covered -> fail with the CVE ref", () => {
+    const out = supplyChainCheck.run({
+      servers: [
+        {
+          name: "r",
+          command: "npx",
+          args: ["-y", "mcp-remote@0.1.15", "https://api.example.com/mcp"],
+        },
+      ],
+    });
+    const fail = out.find((r) => r.status === "fail");
+    expect(fail).toBeDefined();
+    expect(fail?.refs).toContain("CVE-2025-6514");
+    expect(fail?.refs).toContain("GHSA-6xpm-ggf7-wc3p");
+  });
+  it("mcp-remote@0.1.16 (first fixed) passes", () => {
+    const out = supplyChainCheck.run({
+      servers: [
+        { name: "r", command: "npx", args: ["-y", "mcp-remote@0.1.16", "https://a.example"] },
+      ],
+    });
+    expect(out.filter((r) => r.status === "fail")).toHaveLength(0);
+  });
+  it("server-filesystem@0.6.2 hits the unpatched lastAffected range", () => {
+    const out = supplyChainCheck.run({
+      servers: [
+        {
+          name: "r",
+          command: "npx",
+          args: ["-y", "@modelcontextprotocol/server-filesystem@0.6.2", "/data"],
+        },
+      ],
+    });
+    expect(out.filter((r) => r.status === "fail").length).toBeGreaterThan(0);
+    expect(out.find((r) => r.status === "fail")?.refs).toContain("CVE-2025-53110");
+  });
+  it("unpinned watched package is coverage-unassessable, never pass", () => {
+    const out = supplyChainCheck.run({
+      servers: [{ name: "r", command: "npx", args: ["-y", "mcp-remote", "https://a.example"] }],
+    });
+    expect(out.some((r) => r.status === "unassessable")).toBe(true);
+    expect(out.some((r) => r.status === "fail")).toBe(false);
+  });
+  it("unwatched packages pass", () => {
+    const out = supplyChainCheck.run({
+      servers: [{ name: "r", command: "npx", args: ["-y", "totally-unwatched@1.0.0"] }],
+    });
+    expect(out.filter((r) => r.status === "fail")).toHaveLength(0);
   });
 });
 

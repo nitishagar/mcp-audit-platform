@@ -37,6 +37,11 @@ export const SEVERITY_MAP: Record<string, SeverityEntry> = {
     severity: "medium",
     cveRefs: [],
   },
+  "SUP-01": {
+    category: "MCP04 Software Supply Chain Attacks & Dependency Tampering",
+    severity: "medium",
+    cveRefs: [],
+  },
   "AUTH-04": {
     category: "MCP07 Insufficient Authentication & Authorization",
     severity: "high",

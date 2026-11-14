@@ -1,6 +1,7 @@
 import { descriptionPoisoningCheck, inputSchemaCheck, paramCountCheck } from "./arg-validation.js";
 import { inventoryCheck } from "./inventory.js";
 import { shadowDriftCheck } from "./shadow.js";
+import { supplyChainCheck } from "./supply-chain.js";
 import { auditLogCheck } from "./logging.js";
 import { envSecretsCheck, valuePatternCheck } from "./secrets.js";
 import {
@@ -21,6 +22,7 @@ import type { Check } from "./types.js";
 export const CHECKS: Check[] = [
   inventoryCheck,
   shadowDriftCheck,
+  supplyChainCheck,
   remoteAuthCheck,
   localhostBindingCheck,
   originValidationCheck,

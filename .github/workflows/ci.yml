@@ -29,5 +29,8 @@ jobs:
       - name: Verify (typecheck + lint + format + build + test + copy-guard)
         run: pnpm verify
 
+      - name: Advisory snapshot staleness (warn only)
+        run: node scripts/check-advisories-fresh.mjs
+
       - name: Site smoke (serve dist/, HTTP 200 + theme var parity)
         run: bash packages/site/scripts/smoke-site.sh

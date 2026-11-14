@@ -13,6 +13,8 @@ export interface RawFinding {
    * for gate/malformed/throw paths.
    */
   scope?: "input" | "coverage";
+  /** Extra evidence refs (e.g. advisory ids/CVEs, A5) merged into frameworkRefs. */
+  refs?: string[];
 }
 
 /** What a check needs from the config to say anything at all. */
