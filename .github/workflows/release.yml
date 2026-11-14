@@ -32,6 +32,10 @@ jobs:
       - name: Publish to npm (trusted publishing / OIDC)
         run: npm publish --access public
         working-directory: packages/scanner
+      - name: Live npx smoke of the published package
+        run: |
+          npx --yes "mcp-audit-scanner@${GITHUB_REF_NAME#v}" --version | grep -q "mcp-audit ${GITHUB_REF_NAME#v}"
+          npx --yes "mcp-audit-scanner@${GITHUB_REF_NAME#v}" --help | grep -q "static MCP"
       - name: GitHub Release with the audit schema
         run: |
           gh release create "$GITHUB_REF_NAME" packages/scanner/audit.schema.json \
