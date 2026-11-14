@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { sha1Hex } from "./core/sha1.js";
 
 export const ID_SCHEME = "v1" as const;
 
@@ -77,10 +77,7 @@ export interface McpTool {
 
 export function stableFindingId(checkId: string, pointer: string, detail: string): string {
   const normalized = detail.trim().replace(/\s+/g, " ");
-  return createHash("sha1")
-    .update(`${checkId}|${pointer}|${normalized}`)
-    .digest("hex")
-    .slice(0, 12);
+  return sha1Hex(`${checkId}|${pointer}|${normalized}`).slice(0, 12);
 }
 
 export function makeFinding(

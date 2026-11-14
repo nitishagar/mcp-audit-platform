@@ -144,6 +144,20 @@ writeFileSync(
   resolve(dist, "changelog.html"),
   page("Changelog", `<h1>Changelog</h1><pre class="changelog">${esc(changelog)}</pre>`),
 );
+// Step 5 (C4): browser bundle of the pure audit surface (esbuild, ESM).
+const esbuild = await import("esbuild");
+await esbuild.build({
+  entryPoints: [resolve(scannerRoot, "src/entry-browser.ts")],
+  outfile: resolve(dist, "scan.js"),
+  bundle: true,
+  format: "esm",
+  platform: "browser",
+  target: "es2022",
+  minify: false,
+  legalComments: "none",
+  logLevel: "silent",
+});
+
 // Report sample: full standalone A6 report of the vulnerable fixture.
 const sampleReport = execFileSync(
   "node",
@@ -151,6 +165,7 @@ const sampleReport = execFileSync(
   { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
 );
 writeFileSync(resolve(dist, "report-sample.html"), sampleReport);
+copyFileSync(resolve(siteRoot, "src/scan.html"), resolve(dist, "scan.html"));
 console.log(
   `site build: OK (${fails.length} sample findings, ${tiers.length} tiers, ${checkIds.length} rule pages)`,
 );

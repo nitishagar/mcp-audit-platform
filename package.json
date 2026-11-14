@@ -21,6 +21,7 @@
     "@biomejs/biome": "2.5.12",
     "@types/node": "22.10.10",
     "ajv": "^8.20.0",
+    "esbuild": "^0.28.2",
     "typescript": "5.9.3",
     "vitest": "4.0.15"
   },
